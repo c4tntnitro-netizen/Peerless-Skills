@@ -1,0 +1,2 @@
+command,class,tags,syntax,help
+AddPeerlessPoint,peerless.console.AddPeerlessPoint,"peerless_skills,cheat,campaign",addpeerlesspoint [helmsmanship],"Grants one test point once per campaign. Optionally train player Helmsmanship if it is already Elite. Story rewards remain available."

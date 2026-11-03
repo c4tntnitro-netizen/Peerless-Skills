@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "description": "Prepared Peerless icon artwork for current vanilla Elite skills. Only Helmsmanship is enabled in gameplay.",
+  "assets": [
+    {
+      "id": "helmsmanship",
+      "name": "Helmsmanship",
+      "branch": "combat",
+      "metal": "gold",
+      "source": "graphics/icons/skills/helmsmanship.png",
+      "master": "graphics/source/peerless_helmsmanship_gold_v1.png",
+      "runtime": "graphics/icons/skills/peerless_helmsmanship_gold_v1.png",
+      "preserveExisting": true
+    },
+    {
+      "id": "combat_endurance",
+      "name": "Combat Endurance",
+      "branch": "combat",
+      "metal": "gold",
+      "source": "graphics/icons/skills/combat_endurance3.png",
+      "master": "graphics/source/peerless_skills_v1/combat_endurance_gold.png",
+      "runtime": "graphics/icons/skills/peerless_combat_endurance_gold_v1.png",
+      "preserveExisting": false
+    },
+    {
+      "id": "impact_mitigation",
+      "name": "Impact Mitigation",
+      "branch": "combat",
+      "metal": "gold",
+      "source": "graphics/icons/skills/impact_mitigation.png",
+      "master": "graphics/source/peerless_skills_v1/impact_mitigation_gold.png",
+      "runtime": "graphics/icons/skills/peerless_impact_mitigation_gold_v1.png",
+      "preserveExisting": false
+    },
+    {
+      "id": "damage_control",
+      "name": "Damage Control",
+      "branch": "combat",
+      "metal": "gold",
+      "source": "graphics/icons/skills/damage_control2.png",
+      "master": "graphics/source/peerless_skills_v1/damage_control_gold.png",
+      "runtime": "graphics/icons/skills/peerless_damage_control_gold_v1.png",
+      "preserveExisting": false
+    },
+    {
+      "id": "field_modulation",
+      "name": "Field Modulation",
+      "branch": "combat",
+      "metal": "gold",
+      "source": "graphics/icons/skills/field_modulation.png",
+      "master": "graphics/source/peerless_skills_v1/field_modulation_gold.png",
+      "runtime": "graphics/icons/skills/peerless_field_modulation_gold_v1.png",
+      "preserveExisting": false
+    },
+    {
+      "id": "point_defense",
+      "name": "Point Defense",
+      "branch": "combat",
+      "metal": "gold",
+      "source": "graphics/icons/skills/advanced_countermeasures.png",
+      "master": "graphics/source/peerless_skills_v1/point_defense_gold.png",
+      "runtime": "graphics/icons/skills/peerless_point_defense_gold_v1.png",
+      "preserveExisting": false
+    },
+    {
+      "id": "target_analysis",
+      "name": "Target Analysis",
+      "branch": "combat",
+      "metal": "gold",
+      "source": "graphics/icons/skills/target_analysis2.png",
+      "master": "graphics/source/peerless_skills_v1/target_analysis_gold.png",
+      "runtime": "graphics/icons/skills/peerless_target_analysis_gold_v1.png",
+      "preserveExisting": false
+    },
+    {
+      "id": "ballistic_mastery",
+      "name": "Ballistic Mastery",
+      "branch": "combat",
+      "metal": "gold",
+      "source": "graphics/icons/skills/ranged_specialization.png",
+      "master": "graphics/source/peerless_skills_v1/ballistic_mastery_gold.png",
+      "runtime": "graphics/icons/skills/peerless_ballistic_mastery_gold_v1.png",
+      "preserveExisting": false
+    },
+    {
+      "id": "systems_expertise",
+      "name": "Systems Expertise",
+      "branch": "combat",
+      "metal": "gold",
+      "source": "graphics/icons/skills/systems_expertise.png",
+      "master": "graphics/source/peerless_skills_v1/systems_expertise_gold.png",
+      "runtime": "graphics/icons/skills/peerless_systems_expertise_gold_v1.png",
+      "preserveExisting": false
+    },
+    {
+      "id": "missile_specialization",
+      "name": "Missile Specialization",
+      "branch": "combat",
+      "metal": "gold",
+      "source": "graphics/icons/skills/missile_specialization2.png",
+      "master": "graphics/source/peerless_skills_v1/missile_specialization_gold.png",
+      "runtime": "graphics/icons/skills/peerless_missile_specialization_gold_v1.png",
+      "preserveExisting": false
+    },
+    {
+      "id": "gunnery_implants",
+      "name": "Gunnery Implants",
+      "branch": "technology",
+      "metal": "gold",
+      "source": "graphics/icons/skills/gunnery_implants.png",
+      "master": "graphics/source/peerless_skills_v1/gunnery_implants_gold.png",
+      "runtime": "graphics/icons/skills/peerless_gunnery_implants_gold_v1.png",
+      "preserveExisting": false
+    },
+    {
+      "id": "energy_weapon_mastery",
+      "name": "Energy Weapon Mastery",
+      "branch": "technology",
+      "metal": "gold",
+      "source": "graphics/icons/skills/energy_weapon_mastery.png",
+      "master": "graphics/source/peerless_skills_v1/energy_weapon_mastery_gold.png",
+      "runtime": "graphics/icons/skills/peerless_energy_weapon_mastery_gold_v1.png",
+      "preserveExisting": false
+    },
+    {
+      "id": "ordnance_expert",
+      "name": "Ordnance Expertise",
+      "branch": "industry",
+      "metal": "bronze",
+      "source": "graphics/icons/skills/ordnance_expert2.png",
+      "master": "graphics/source/peerless_skills_v1/ordnance_expert_bronze.png",
+      "runtime": "graphics/icons/skills/peerless_ordnance_expert_bronze_v1.png",
+      "preserveExisting": false
+    },
+    {
+      "id": "polarized_armor",
+      "name": "Polarized Armor",
+      "branch": "industry",
+      "metal": "bronze",
+      "source": "graphics/icons/skills/polarized_armor.png",
+      "master": "graphics/source/peerless_skills_v1/polarized_armor_bronze.png",
+      "runtime": "graphics/icons/skills/peerless_polarized_armor_bronze_v1.png",
+      "preserveExisting": false
+    }
+  ]
+}

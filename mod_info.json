@@ -1,0 +1,10 @@
+{
+  "id": "peerless_skills",
+  "name": "Peerless Skills",
+  "author": "c4tntnitro-netizen",
+  "version": "0.1.0",
+  "gameVersion": "0.98a",
+  "description": "Player-only training beyond Elite. Story mods can award Peerless points.",
+  "jars": ["jars/PeerlessSkills.jar"],
+  "modPlugin": "peerless.PeerlessModPlugin"
+}

@@ -1,0 +1,4 @@
+Tool: built-in imagegen
+Input: starsector-core/graphics/icons/skills/helmsmanship.png
+
+Edit target: the attached tiny 64 by 64 Starsector Helmsmanship skill icon. Make a faithful gold recolored variant for a higher skill tier named Peerless. Preserve the exact square composition, central white ship silhouette and black silhouette/cutout, all thin orbital curves, and all existing geometric lines. Shift the orange/red lower glow and warm lines into rich luminous metallic GOLD and pale champagne highlights. Make it unmistakably golden when displayed at 64x64. No new border, trim, badge, emblem, text, symbols, objects or changed geometry. Keep the existing black background areas black; preserve transparent pixels where present. This is a palette recolor of the existing icon, not a redesign. Output square.
