@@ -39,12 +39,34 @@ public final class PeerlessConsoleRegression {
         command.runCommand("", CommandContext.CAMPAIGN_MAP);
         command.runCommand("helmsmanship", CommandContext.CAMPAIGN_MAP);
         check(f.saved.equals(snapshot), "No repeat grants or replacement");
+        peerless.console.APSunlock unlock = new peerless.console.APSunlock();
+        f.saved.clear(); f.skill = 0f;
+        check(unlock.runCommand("", CommandContext.COMBAT_MISSION) == CommandResult.WRONG_CONTEXT,
+                "Unlock campaign only");
+        check(unlock.runCommand("extra", CommandContext.CAMPAIGN_MAP) == CommandResult.BAD_SYNTAX,
+                "Unlock rejects arguments");
+        check(f.saved.isEmpty() && f.skill == 0f, "Invalid unlock does not mutate state");
+        PeerlessSkills.awardOnce("$test_reward");
+        check(unlock.runCommand("", CommandContext.CAMPAIGN_MAP) == CommandResult.SUCCESS,
+                "Unlock succeeds without learned prerequisites");
+        for (String id : PeerlessSkills.getSupportedSkillIds()) {
+            check(PeerlessSkills.isTrained(id) && f.skill >= 2f, "All supported skills trained and Elite");
+        }
+        check(PeerlessSkills.getPoints() == 1 && !f.saved.containsKey("$chief_navigator_domain_epic_v1"),
+                "Unlock preserves reward balance and quest state");
+        snapshot = new HashMap<>(f.saved);
+        unlock.runCommand("", CommandContext.CAMPAIGN_MAP);
+        check(f.saved.equals(snapshot), "Repeated unlock is idempotent");
         Global.setSector(null);
+        check(unlock.runCommand("", CommandContext.CAMPAIGN_MAP) == CommandResult.ERROR,
+                "Unlock requires campaign");
         check(command.runCommand("", CommandContext.CAMPAIGN_MAP) == CommandResult.ERROR,
                 "Missing campaign rejected");
         Path root = Files.isDirectory(Path.of("data")) ? Path.of("") : Path.of("Peerless Skills");
         check(Files.readString(root.resolve("data/console/commands.csv"))
                 .contains("AddPeerlessPoint,peerless.console.AddPeerlessPoint,"), "Registered command");
+        check(Files.readString(root.resolve("data/console/commands.csv"))
+                .contains("APSunlock,peerless.console.APSunlock,"), "Registered unlock command");
         System.out.println("PASS: actual console grant/spend, prerequisites, context, syntax, one-point cap and quest-state preservation.");
     }
 }

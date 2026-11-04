@@ -14,7 +14,7 @@ public final class AddPeerlessPoint implements BaseCommand {
         if (Global.getSector() == null || Global.getSector().getPlayerPerson() == null) return CommandResult.ERROR;
         boolean granted = PeerlessSkills.awardOnce("$peerless_skills_console_point_v1");
         if (!choice.isEmpty() && PeerlessSkills.train(Skills.HELMSMANSHIP)) {
-            Console.showMessage("Peerless Helmsmanship installed: +30 su/second total.");
+            Console.showMessage("Peerless Helmsmanship trained: ship-system speed burst.");
         } else if (!choice.isEmpty()) {
             Console.showMessage(PeerlessSkills.isTrained(Skills.HELMSMANSHIP)
                     ? "Helmsmanship is already Peerless." : "Learn Elite Helmsmanship first.");

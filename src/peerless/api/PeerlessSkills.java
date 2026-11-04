@@ -7,8 +7,35 @@ import com.fs.starfarer.api.impl.campaign.ids.Skills;
 
 /** Player training and story reward API. All state belongs to the current sector. */
 public final class PeerlessSkills {
+    /** Implemented Peerless skills; extend this registry as new effects are added. */
+    public static java.util.List<String> getSupportedSkillIds() {
+        return SkillCatalog.ids();
+    }
+
+    /** Testing shortcut: grants prerequisites and training without spending reward points. */
+    public static int unlockAllForTesting() {
+        if (memory() == null || Global.getSector().getPlayerPerson() == null) return 0;
+        MutableCharacterStatsAPI stats = Global.getSector().getPlayerStats();
+        if (stats == null) return 0;
+        int balance = getPoints();
+        memory().set(POINTS, balance);
+        int count = 0;
+        for (String skillId : getSupportedSkillIds()) {
+            markTrained(skillId);
+            stats.setSkillLevel(skillId, Math.max(2f, stats.getSkillLevel(skillId)));
+            count++;
+        }
+        return count;
+    }
+
     private PeerlessSkills() {}
     private static final String POINTS = "$peerless_skills_points_v1";
+    private static final String TRAINED_PREFIX = "$peerless_skills_trained_v1_";
+
+    private static void markTrained(String skillId) {
+        if (Skills.HELMSMANSHIP.equals(skillId)) memory().set(TRAINED, skillId);
+        else memory().set(TRAINED_PREFIX + skillId, true);
+    }
     // The prototype already persisted the trained skill ID and native stat modifier.
     // Keep that save representation for Helmsmanship when installing the split mod.
     public static final String TRAINED = "$chief_navigator_peerless_skill_v1";
@@ -38,7 +65,8 @@ public final class PeerlessSkills {
         MemoryAPI m = memory();
         if (m == null || Global.getSector().getPlayerPerson() == null || rewardKey == null
                 || !rewardKey.startsWith("$") || rewardKey.length() < 2
-                || POINTS.equals(rewardKey) || TRAINED.equals(rewardKey) || m.getBoolean(rewardKey)) return false;
+                || POINTS.equals(rewardKey) || TRAINED.equals(rewardKey)
+                || rewardKey.startsWith(TRAINED_PREFIX) || m.getBoolean(rewardKey)) return false;
         int balance = getPoints();
         if (balance == Integer.MAX_VALUE) return false;
         m.set(POINTS, balance + 1);
@@ -48,11 +76,13 @@ public final class PeerlessSkills {
 
     public static boolean isTrained(String skillId) {
         MemoryAPI m = memory();
-        return m != null && Skills.HELMSMANSHIP.equals(skillId) && skillId.equals(m.getString(TRAINED));
+        return m != null && getSupportedSkillIds().contains(skillId)
+                && (Skills.HELMSMANSHIP.equals(skillId) ? skillId.equals(m.getString(TRAINED))
+                : m.getBoolean(TRAINED_PREFIX + skillId));
     }
 
     public static boolean canTrain(String skillId) {
-        if (!Skills.HELMSMANSHIP.equals(skillId) || getPoints() <= 0 || isTrained(skillId)) return false;
+        if (!getSupportedSkillIds().contains(skillId) || getPoints() <= 0 || isTrained(skillId)) return false;
         MutableCharacterStatsAPI stats = Global.getSector().getPlayerStats();
         return stats != null && stats.getSkillLevel(skillId) >= 2f;
     }
@@ -62,7 +92,7 @@ public final class PeerlessSkills {
         int balance = getPoints();
         MutableCharacterStatsAPI stats = Global.getSector().getPlayerStats();
         memory().set(POINTS, balance - 1);
-        memory().set(TRAINED, skillId);
+        markTrained(skillId);
         stats.setSkillLevel(skillId, stats.getSkillLevel(skillId));
         return true;
     }

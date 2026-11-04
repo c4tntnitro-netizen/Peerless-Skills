@@ -1,3 +1,4 @@
 {
+  "plugins": { "peerlessCombat": "peerless.combat.PeerlessCombatPlugin" },
   "ruleCommandPackages": ["peerless.rules"]
 }

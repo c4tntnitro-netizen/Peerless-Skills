@@ -41,12 +41,9 @@ public final class PeerlessHelmsmanship extends BaseSkillEffectDescription imple
 
     @Override
     public void apply(MutableShipStatsAPI stats, HullSize size, String id, float level) {
-        if (appliesTo(stats)) {
-            stats.getMaxSpeed().modifyFlat(MODIFIER,
-                    (ELITE_MULTIPLIER - 1f) * Helmsmanship.ELITE_SPEED_BONUS_FLAT);
-        } else {
-            unapply(stats, size, id);
-        }
+        // Remove the prototype's former permanent +20 speed, including in old saves.
+        // The combat controller now owns the system-triggered burst.
+        unapply(stats, size, id);
     }
 
     @Override
@@ -66,7 +63,7 @@ public final class PeerlessHelmsmanship extends BaseSkillEffectDescription imple
         info.setParaFontDefault();
         boolean active = stats.getSkillLevel(Skills.HELMSMANSHIP) >= 2f;
         String bonus = "+" + (int) (ELITE_MULTIPLIER * Helmsmanship.ELITE_SPEED_BONUS_FLAT);
-        info.addPara(active ? bonus + " su/second to top speed (total)"
+        info.addPara(active ? peerless.api.SkillCatalog.EFFECTS.get(Skills.HELMSMANSHIP)
                 : "Requires Elite Helmsmanship", Misc.getHighlightColor(), 3f);
     }
 

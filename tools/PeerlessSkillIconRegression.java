@@ -1,5 +1,11 @@
 package peerless.skills;
 import peerless.api.PeerlessSkills;
+import com.fs.starfarer.campaign.CharacterStats;
+import com.fs.starfarer.coreui.voidsuper;
+import com.fs.starfarer.coreui.Z;
+
+
+import com.fs.starfarer.ui.n;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.SettingsAPI;
@@ -234,6 +240,99 @@ public final class PeerlessSkillIconRegression {
         check(GL11.glGetError()==GL11.GL_NO_ERROR,"Hardening cases produce no GL errors");
     }
 
+    private static void allSkills(org.json.JSONArray catalog, boolean sic) throws Exception {
+        Map<String,Integer> textures=new HashMap<>();
+        Map<String,SkillSpecAPI> specs=new HashMap<>();
+        Map<String,byte[][]> originals=new HashMap<>(), upgrades=new HashMap<>();
+        for (int i=0;i<catalog.length();i++) {
+            org.json.JSONObject asset=catalog.getJSONObject(i);
+            String id=asset.getString("id"), source=asset.getString("source"), runtime=asset.getString("runtime");
+            check(runtime.equals(PeerlessSkillIcon.spriteFor(id)),"Every skill maps to its authored bitmap: "+id);
+            // Native file-loader/cache paths match the actual bitmap resources.
+            int original=texture(Path.of("../../starsector-core",source).toAbsolutePath()), gold=texture(Path.of(runtime).toAbsolutePath());
+            textures.put(source,original);textures.put(runtime,gold);
+            originals.put(id,mipPixels(original));upgrades.put(id,mipPixels(gold));
+            specs.put(id,mock(SkillSpecAPI.class,(n,a)->n.equals("getSpriteName")?source:null));
+        }
+        PeerlessFixture f=new PeerlessFixture();
+        CoreUITabId[] tab={CoreUITabId.CHARACTER};List<Object> listeners=new ArrayList<>();
+        ListenerManagerAPI manager=mock(ListenerManagerAPI.class,(n,a)->{
+            if(n.equals("addListener"))listeners.add(a[0]);
+            if(n.equals("removeListenerOfClass"))listeners.removeIf(((Class<?>)a[0])::isInstance);
+            return null;
+        });
+        Global.setSector(mock(SectorAPI.class,(n,a)->switch(n){
+            case "getMemoryWithoutUpdate" -> f.memory;case "getPlayerStats" -> f.stats;case "getPlayerPerson" -> f.player;
+            case "getListenerManager" -> manager;
+            case "getCampaignUI" -> mock(CampaignUIAPI.class,(nn,aa)->nn.equals("getCurrentCoreTab")?tab[0]:null);
+            default -> null;
+        }));
+        Global.setSettings(mock(SettingsAPI.class,(n,a)->{
+            if(n.equals("getModManager"))return mock(com.fs.starfarer.api.ModManagerAPI.class,(nn,aa)->nn.equals("isModEnabled") && "second_in_command".equals(aa[0]) ? sic : null);
+            if(n.equals("getSkillSpec"))return specs.get(a[0]);
+            if(n.equals("getSprite"))return mock(SpriteAPI.class,(nn,aa)->nn.equals("getTextureId")?textures.get(a[0]):null);
+            return null;
+        }));
+        PeerlessSkills.unlockAllForTesting();PeerlessSkillIcon.install();
+        check(listeners.size()==1,"Fourteen swaps use one UI listener");
+        PeerlessSkillIcon hook=(PeerlessSkillIcon)listeners.get(0);
+        hook.renderInUICoordsBelowUI(null);
+        for(int i=0;i<catalog.length();i++) {
+            var asset=catalog.getJSONObject(i);String id=asset.getString("id");
+            if(sic && asset.getString("metal").equals("bronze")) {
+                int original=textures.get(asset.getString("source"));
+                byte[] bronze=upgrades.get(id)[0], tinted=pixels(original);
+                int greenGain=0;
+                for(int p=0;p<tinted.length;p+=4) {
+                    check(tinted[p]==bronze[p] && tinted[p+2]==bronze[p+2] && tinted[p+3]==bronze[p+3],"SiC gold tint preserves red, blue, alpha and icon details: "+id);
+                    greenGain+=(tinted[p+1]&255)-(bronze[p+1]&255);
+                }
+                check(greenGain>0,"SiC industry icon shifts from orange bronze toward yellow gold: "+id);
+                upgrades.put(id,mipPixels(original));
+            }
+            checkMipPixels(textures.get(asset.getString("source")),upgrades.get(id),"All fourteen visible together: "+id);
+        }
+        if(sic) {
+            GL11.glClearColor(0,0,0,0);GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
+            int slot=0;
+            for(int i=0;i<catalog.length();i++) {
+                var asset=catalog.getJSONObject(i);
+                if(!asset.getString("metal").equals("bronze"))continue;
+                drawCachedIcon(textures.get(asset.getString("runtime")),SIZE*slot++);
+                drawCachedIcon(textures.get(asset.getString("source")),SIZE*slot++);
+            }
+            ByteBuffer frame=BufferUtils.createByteBuffer(SIZE*4*SIZE*4);
+            GL11.glReadPixels(0,0,SIZE*4,SIZE,GL11.GL_RGBA,GL11.GL_UNSIGNED_BYTE,frame);
+            BufferedImage preview=new BufferedImage(SIZE*4,SIZE,BufferedImage.TYPE_INT_ARGB);
+            for(int y=0;y<SIZE;y++)for(int x=0;x<SIZE*4;x++) {
+                int p=(y*SIZE*4+x)*4;
+                preview.setRGB(x,SIZE-1-y,0xff000000|((frame.get(p)&255)<<16)|((frame.get(p+1)&255)<<8)|(frame.get(p+2)&255));
+            }
+            ImageIO.write(preview,"png",Path.of("build/sic-industry-icons.png").toFile());
+        }
+        hook.renderInUICoordsAboveUIAndTooltips(null);
+        for(int i=0;i<catalog.length();i++) {
+            var asset=catalog.getJSONObject(i);String id=asset.getString("id");
+            checkMipPixels(textures.get(asset.getString("source")),originals.get(id),"All fourteen restored: "+id);
+        }
+        f.levels.put("combat_endurance",1f);
+        f.saved.remove("$peerless_skills_trained_v1_impact_mitigation");
+        hook.renderInUICoordsBelowUI(null);
+        for(int i=0;i<catalog.length();i++) {
+            var asset=catalog.getJSONObject(i);String id=asset.getString("id");
+            boolean nativeArt=id.equals("combat_endurance")||id.equals("impact_mitigation");
+            checkMipPixels(textures.get(asset.getString("source")),nativeArt?originals.get(id):upgrades.get(id),"Independent eligibility: "+id);
+        }
+        PeerlessSkillIcon.install();
+        check(listeners.size()==1,"Reload still has exactly one listener");
+        for(int i=0;i<catalog.length();i++) {
+            var asset=catalog.getJSONObject(i);String id=asset.getString("id");
+            checkMipPixels(textures.get(asset.getString("source")),originals.get(id),"Reload restores every interrupted swap: "+id);
+        }
+        check(GL11.glGetError()==GL11.GL_NO_ERROR,"Fourteen simultaneous swaps leave no GL errors");
+        System.out.println("PASS: all fourteen cached icons, "+(sic?"SiC industry gold":"vanilla industry bronze")+", per-skill gates, mip restoration and interrupted reload cleanup.");
+    }
+
     public static void main(String[] args) throws Exception {
         Path output = Path.of("out_peerless_20261101");
         Files.createDirectories(output);
@@ -270,6 +369,11 @@ public final class PeerlessSkillIconRegression {
                 texture(icon);
                 check(GL11.glGetError()==GL11.GL_NO_ERROR,"Native texture loader renders: "+icon);
             }
+            // Run the simultaneous-icon case before destructive texture lifecycle cases.
+            allSkills(catalog,false);
+            allSkills(catalog,true);
+
+            Global.setSettings(oldSettings);Global.setSector(oldSector);
             int original=texture(Path.of("../../starsector-core",ORIGINAL));
             int gold=texture(Path.of(PeerlessSkillIcon.SPRITE));
             System.out.println("Native file-loaded icon: min filter="
@@ -309,6 +413,7 @@ public final class PeerlessSkillIconRegression {
                 return null;
             }));
             PeerlessSkillIcon hook=new PeerlessSkillIcon();
+            GL11.glClearColor(0,0,0,0);GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
             drawCachedIcon(cachedButtonTexture,0);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D,gold);
             GL11.glPixelStorei(GL11.GL_PACK_ROW_LENGTH,77);

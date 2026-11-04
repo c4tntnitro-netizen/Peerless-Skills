@@ -1,6 +1,7 @@
 package peerless.skills;
 
 import peerless.api.PeerlessSkills;
+import peerless.api.SkillCatalog;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.SettingsAPI;
@@ -12,6 +13,8 @@ import com.fs.starfarer.api.combat.ViewportAPI;
 import com.fs.starfarer.api.graphics.SpriteAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Skills;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ARBBufferObject;
 import org.lwjgl.opengl.ContextCapabilities;
@@ -27,6 +30,23 @@ public final class PeerlessSkillIcon implements CampaignUIRenderingListener {
     private static final int SIZE = 64;
     private static final int BYTES = SIZE * SIZE * 4;
     private static PeerlessSkillIcon installed;
+    private final String skillId;
+    private final String sprite;
+    private final boolean industryGold;
+    private final List<PeerlessSkillIcon> additional = new ArrayList<>();
+
+    public PeerlessSkillIcon() { this(Skills.HELMSMANSHIP, SPRITE); }
+    private PeerlessSkillIcon(String skillId, String sprite) {
+        this.skillId=skillId; this.sprite=sprite;
+        // SiC places both industry skills in its combat roster; match the other gold upgrades.
+        industryGold=("ordnance_expert".equals(skillId) || "polarized_armor".equals(skillId))
+                && Global.getSettings()!=null && Global.getSettings().getModManager()!=null
+                && Global.getSettings().getModManager().isModEnabled("second_in_command");
+    }
+    public static String spriteFor(String skillId) {
+        String metal = "ordnance_expert".equals(skillId) || "polarized_armor".equals(skillId) ? "bronze" : "gold";
+        return "graphics/icons/skills/peerless_"+skillId+"_"+metal+"_v1.png";
+    }
 
     private ByteBuffer originalPixels;
     private ByteBuffer goldPixels;
@@ -44,14 +64,18 @@ public final class PeerlessSkillIcon implements CampaignUIRenderingListener {
         // before replacing the hook, including when loading a different save.
         if (installed != null) {
             installed.failed = true;
-            if (!installed.restoreSafely()) return;
+            if (!installed.restoreAll()) return;
         }
         Global.getSector().getListenerManager().removeListenerOfClass(PeerlessSkillIcon.class);
         Global.getSector().removeTransientScriptsOfClass(PeerlessSkillIcon.class);
         installed = null;
         try {
-            Global.getSettings().loadTexture(SPRITE);
             PeerlessSkillIcon hook = new PeerlessSkillIcon();
+            for (String id : SkillCatalog.ids()) {
+                String asset = spriteFor(id);
+                Global.getSettings().loadTexture(asset);
+                if (!Skills.HELMSMANSHIP.equals(id)) hook.additional.add(new PeerlessSkillIcon(id,asset));
+            }
             Global.getSector().getListenerManager().addListener(hook, true);
             installed = hook;
         } catch (java.io.IOException | RuntimeException ex) {
@@ -60,9 +84,9 @@ public final class PeerlessSkillIcon implements CampaignUIRenderingListener {
     }
 
     private boolean eligible() {
-        if (Global.getSector() == null || !PeerlessSkills.isTrained(Skills.HELMSMANSHIP)
+        if (Global.getSector() == null || !PeerlessSkills.isTrained(skillId)
                 || Global.getSector().getPlayerStats() == null
-                || Global.getSector().getPlayerStats().getSkillLevel(Skills.HELMSMANSHIP) < 2f) return false;
+                || Global.getSector().getPlayerStats().getSkillLevel(skillId) < 2f) return false;
         CampaignUIAPI ui = Global.getSector().getCampaignUI();
         return ui != null && ui.getCurrentCoreTab() == CoreUITabId.CHARACTER;
     }
@@ -77,16 +101,22 @@ public final class PeerlessSkillIcon implements CampaignUIRenderingListener {
 
     @Override
     public void renderInUICoordsBelowUI(ViewportAPI viewport) {
-        if (!restoreSafely() || failed) return;
+        if (!restoreAll()) return;
+        renderOne();
+        for (PeerlessSkillIcon icon : additional) icon.renderOne();
+    }
+
+    private void renderOne() {
+        if (failed) return;
         try {
             if (!eligible()) return;
             ContextCapabilities context = currentContext();
             SettingsAPI settings = Global.getSettings();
             if (context == null || settings == null) return;
-            SkillSpecAPI skill = settings.getSkillSpec(Skills.HELMSMANSHIP);
+            SkillSpecAPI skill = settings.getSkillSpec(skillId);
             if (skill == null || skill.getSpriteName() == null) return;
             SpriteAPI original = settings.getSprite(skill.getSpriteName());
-            SpriteAPI gold = settings.getSprite(SPRITE);
+            SpriteAPI gold = settings.getSprite(sprite);
             if (original == null || gold == null) return;
             int originalId = original.getTextureId();
             int goldId = gold.getTextureId();
@@ -102,6 +132,7 @@ public final class PeerlessSkillIcon implements CampaignUIRenderingListener {
                 }
                 read(originalId, originalPixels);
                 read(goldId, goldPixels);
+                if (industryGold) tintGold(goldPixels);
                 originalTexture = originalId;
                 swapContext = context;
                 verifiedSwap = false;
@@ -117,6 +148,14 @@ public final class PeerlessSkillIcon implements CampaignUIRenderingListener {
             failed = true;
             warn(ex);
             restoreSafely();
+        }
+    }
+
+    /** Shift warm bronze pixels to gold, preserving brightness, detail and alpha. */
+    private static void tintGold(ByteBuffer pixels) {
+        for (int i=0;i<BYTES;i+=4) {
+            int red=pixels.get(i)&255, green=pixels.get(i+1)&255, blue=pixels.get(i+2)&255;
+            if (red>green && green>=blue) pixels.put(i+1,(byte)(blue+(red-blue)*3/4));
         }
     }
 
@@ -189,6 +228,12 @@ public final class PeerlessSkillIcon implements CampaignUIRenderingListener {
             warn(ex);
             return false;
         }
+    }
+
+    private boolean restoreAll() {
+        boolean restored = restoreSafely();
+        for (PeerlessSkillIcon icon : additional) restored = icon.restoreSafely() && restored;
+        return restored;
     }
 
     private void warn(RuntimeException ex) {
@@ -269,5 +314,5 @@ public final class PeerlessSkillIcon implements CampaignUIRenderingListener {
     }
 
     @Override public void renderInUICoordsAboveUIBelowTooltips(ViewportAPI viewport) { }
-    @Override public void renderInUICoordsAboveUIAndTooltips(ViewportAPI viewport) { restoreSafely(); }
+    @Override public void renderInUICoordsAboveUIAndTooltips(ViewportAPI viewport) { restoreAll(); }
 }

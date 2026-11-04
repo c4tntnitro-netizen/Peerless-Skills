@@ -16,6 +16,9 @@ public final class PeerlessSkillsCMD extends BaseCommandPlugin {
         if (args.isEmpty()) return false;
         String action = args.get(0).getString(memories);
         switch (action) {
+            case "open":
+                if (dialog == null) return false;
+                peerless.campaign.TrainingDialog.open(dialog); return true;
             case "hasPoint": return PeerlessSkills.getPoints() > 0;
             case "unlocked": return PeerlessSkills.isUnlocked();
             case "trained": return PeerlessSkills.isTrained(Skills.HELMSMANSHIP);

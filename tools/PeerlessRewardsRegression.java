@@ -29,7 +29,7 @@ public final class PeerlessRewardsRegression {
             check(!PeerlessSkills.train("helmsmanship") && PeerlessSkills.getPoints()==2, "Elite required");
             f.skill=2;
             check(PeerlessSkills.train("helmsmanship") && PeerlessSkills.getPoints()==1, "Spend only one");
-            check(!PeerlessSkills.train("helmsmanship") && !PeerlessSkills.train("combat_endurance"), "No duplicate or unsupported training");
+            check(!PeerlessSkills.train("helmsmanship") && !PeerlessSkills.train("unsupported"), "No duplicate or unsupported training");
             PeerlessFixture reloaded=new PeerlessFixture(); reloaded.saved.putAll(new HashMap<>(f.saved)); load(reloaded);
             check(!PeerlessSkills.awardOnce(first) && !PeerlessSkills.awardOnce(second)
                     && PeerlessSkills.isTrained("helmsmanship") && PeerlessSkills.getPoints()==1, "Durable source receipts and balance");

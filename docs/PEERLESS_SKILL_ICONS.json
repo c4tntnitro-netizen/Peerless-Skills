@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Prepared Peerless icon artwork for current vanilla Elite skills. Only Helmsmanship is enabled in gameplay.",
+  "description": "Authored Peerless artwork for all fourteen current vanilla Elite skills. SiC renders the two industry bronze icons with a gold tint.",
   "assets": [
     {
       "id": "helmsmanship",

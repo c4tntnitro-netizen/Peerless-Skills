@@ -1,2 +1,3 @@
 command,class,tags,syntax,help
+APSunlock,peerless.console.APSunlock,"peerless_skills,cheat,campaign",APSunlock,"Unlocks all implemented Peerless skills and their Elite prerequisites for the player without spending points. Campaign only."
 AddPeerlessPoint,peerless.console.AddPeerlessPoint,"peerless_skills,cheat,campaign",addpeerlesspoint [helmsmanship],"Grants one test point once per campaign. Optionally train player Helmsmanship if it is already Elite. Story rewards remain available."
