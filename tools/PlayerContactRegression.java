@@ -22,7 +22,7 @@ public final class PlayerContactRegression {
         List<String> transcript=new ArrayList<>();
         int[] cues={0};
         Global.setSoundPlayer(mock(SoundPlayerAPI.class,(n,a)->{
-            if(n.equals("playUISound")){check(a[0].equals("peerless_training_complete"),"Use the training cue");cues[0]++;}
+            if(n.equals("playUISound")){check(a[0].equals("ui_char_level_up"),"Use the vanilla character level-up cue");cues[0]++;}
             return null;
         }));
         PersonAPI player=mock(PersonAPI.class,(n,a)->switch(n) {

@@ -67,6 +67,8 @@ public final class PeerlessConsoleRegression {
                 .contains("AddPeerlessPoint,peerless.console.AddPeerlessPoint,"), "Registered command");
         check(Files.readString(root.resolve("data/console/commands.csv"))
                 .contains("APSunlock,peerless.console.APSunlock,"), "Registered unlock command");
+        check(Files.readString(root.resolve("data/console/commands.csv"))
+                .contains("APSProgress,peerless.console.APSProgress,"), "Registered progress command");
         System.out.println("PASS: actual console grant/spend, prerequisites, context, syntax, one-point cap and quest-state preservation.");
     }
 }

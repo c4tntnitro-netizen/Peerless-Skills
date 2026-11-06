@@ -13,7 +13,7 @@ public final class SkillCatalog {
         add("combat_endurance", "Combat Endurance", "Once per battle, prevents your hull from dropping below 10% for 5 seconds.");
         add("impact_mitigation", "Impact Mitigation", "+100% ship mass.");
         add("damage_control", "Damage Control", "Weapon and engine repair speed increases by your current CR.");
-        add("field_modulation", "Field Modulation", "Once per battle, your first overload becomes a forced vent.");
+        add("field_modulation", "Field Modulation", "Cancel the first overload that occurs and, if able, vent. Gain +200% maneuverability for five seconds.");
         add("point_defense", "Point Defense", "Point-defense weapons deal an additional 10% damage as EMP.");
         add("target_analysis", "Target Analysis", "Unshielded weapon hits deal 10% additional armor damage over 5 seconds, up to 100 damage per hit.");
         add("ballistic_mastery", "Ballistic Mastery", "weapons grow more accurate when firing");

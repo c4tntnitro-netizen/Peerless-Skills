@@ -101,7 +101,7 @@ public final class PeerlessSkills {
         markTrained(skillId);
         stats.setSkillLevel(skillId, stats.getSkillLevel(skillId));
         if (Global.getSoundPlayer() != null)
-            Global.getSoundPlayer().playUISound("peerless_training_complete", 1f, 1f);
+            Global.getSoundPlayer().playUISound("ui_char_level_up", 1f, 1f);
         return true;
     }
 
@@ -114,14 +114,13 @@ public final class PeerlessSkills {
         boolean changed = false;
         for (String id : getSupportedSkillIds()) {
             if (!isTrained(id) || stats.getSkillLevel(id) >= 2f) continue;
-            boolean free = m.getBoolean(TEST_UNLOCK_PREFIX + id);
             int balance = getPoints();
-            if (!free && balance == Integer.MAX_VALUE) continue;
-            m.set(POINTS, balance + (free ? 0 : 1));
+            if (balance == Integer.MAX_VALUE) continue;
+            m.set(POINTS, balance + 1);
             if (Skills.HELMSMANSHIP.equals(id)) m.unset(TRAINED);
             else m.set(TRAINED_PREFIX + id, false);
             m.set(TEST_UNLOCK_PREFIX + id, false);
-            if (!free) refunded++;
+            refunded++;
             changed = true;
         }
         if (changed) stats.refreshCharacterStatsEffects();

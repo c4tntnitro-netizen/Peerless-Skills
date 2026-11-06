@@ -13,9 +13,34 @@ public final class PeerlessProgression {
     private static final String CAP = "$peerless_skills_postcap_last_cap_v1";
 
     public static void install() {
+        ProgressionSettings.listen();
         var settings = ProgressionSettings.read();
         NativeLevelProgress.configure(settings.enabled());
         rebase(Global.getSettings().getLevelupPlugin());
+    }
+    static void settingsChanged() {
+        if (Global.getSector() == null || Global.getSector().getPlayerStats() == null) return;
+        // Settings and console dialogs can suspend campaign scripts. Attach/detach now,
+        // before another XP award can wrap; changing only the ratio must not rebase XP.
+        if (NativeLevelProgress.configure(ProgressionSettings.read().enabled()))
+            rebase(Global.getSettings().getLevelupPlugin());
+    }
+    /** Read-only console snapshot; never installs the hook, rebases XP or pays out points. */
+    public static String diagnostics() {
+        var settings = ProgressionSettings.read();
+        var stats = Global.getSector().getPlayerStats();
+        var levels = Global.getSettings().getLevelupPlugin();
+        int cap = levels == null ? -1 : levels.getMaxLevel();
+        long cycle = levels == null ? 0L : levels.getXPForLevel(cap + 1) - levels.getXPForLevel(cap);
+        return "Post-cap progression: " + (settings.enabled() ? "enabled" : "disabled")
+                + "\nXP tracker: " + (NativeLevelProgress.isInstalled(levels) ? "attached" : "not attached")
+                + "\nPlayer level: " + stats.getLevel() + "; cap: " + cap
+                + "\nXP: " + stats.getXP() + "; last recorded XP: " + number(XP, -1L)
+                + "; XP per bar: " + cycle
+                + "\nBanked progress: " + String.format(java.util.Locale.ROOT, "%.4f", number(PROGRESS, 0d).doubleValue())
+                + " / " + settings.levelsPerPoint() + " bars per Peerless point"
+                + "\nXP points awarded: " + number(SEQUENCE, 0L)
+                + "; unspent Peerless points: " + PeerlessSkills.getPoints();
     }
     public static void advance() {
         if (Global.getSector() == null || Global.getSector().getPlayerStats() == null) return;
@@ -57,8 +82,8 @@ public final class PeerlessProgression {
         long gained = raw > Math.max(base, previous) ? raw - Math.max(base, previous) : 0L;
         double progress = number(PROGRESS, 0d).doubleValue();
         memory.set(PROGRESS, progress + (double)gained / cycle);
-        // Native CharacterStats immediately reduces XP to this range after this callback.
-        memory.set(XP, raw >= base ? base + (raw - base) % cycle : raw);
+        // Reward size follows the configured cap, while native XP wrapping follows the actual level.
+        memory.set(XP, NativeLevelProgress.xpAfterUpdate(levels, stats.getLevel(), raw));
     }
     private static Number number(String key, Number fallback) {
         Object value = Global.getSector().getMemoryWithoutUpdate().get(key);

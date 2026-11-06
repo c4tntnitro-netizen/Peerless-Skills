@@ -7,6 +7,8 @@ try {
     $out = Join-Path 'build' ('tests-' + [guid]::NewGuid())
     New-Item -ItemType Directory -Force $out | Out-Null
     $sources = @(Get-ChildItem tools -Filter '*.java' | ForEach-Object FullName)
+    $sources += (Resolve-Path '../../starsector-core/data/scripts/plugins/LevelupPluginImpl.java').Path
+    $sources += (Resolve-Path '../../starsector-core/data/hullmods/SafetyOverrides.java').Path
     & "$jdk/javac.exe" --release 17 -cp $cp -d $out $sources
     if ($LASTEXITCODE) { throw 'Test compilation failed' }
     foreach ($test in @('PeerlessRewardsRegression','PeerlessPointNotificationRegression','PeerlessProgressionRegression','PeerlessHelmsmanshipRegression','PeerlessCombatEnduranceRegression','PeerlessFieldModulationRegression','PrototypeRegression','ArmorDecayRegression','PeerlessCombatStatusRegression','PlayerContactRegression','StoryRoutesRegression','PeerlessConsoleRegression','SkillDescriptionRegression','PeerlessSkillIconRegression','MissileReloadHudRegression')) {

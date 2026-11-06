@@ -9,8 +9,9 @@ import com.fs.starfarer.api.impl.campaign.skills.BaseSkillEffectDescription;
 import com.fs.starfarer.api.ui.TooltipMakerAPI;
 import com.fs.starfarer.api.util.Misc;
 import peerless.api.PeerlessSkills;
+import peerless.api.SkillCatalog;
 
-/** Converts the first overload to a native forced vent, preserving current and hard flux. */
+/** Cancels the first overload, vents if allowed, and grants a decaying maneuverability boost. */
 public final class PeerlessFieldModulation extends BaseSkillEffectDescription
         implements ShipSkillEffect, AfterShipCreationSkillEffect {
     private static boolean eligible(ShipAPI ship) {
@@ -38,34 +39,58 @@ public final class PeerlessFieldModulation extends BaseSkillEffectDescription
         info.addPara("Peerless", Misc.getStoryOptionColor(), 10f);
         info.setParaFontDefault();
         info.addPara(stats.getSkillLevel(Skills.FIELD_MODULATION) >= 2f
-                ? "Once per battle, the first overload is replaced by a forced vent."
+                ? SkillCatalog.EFFECTS.get(Skills.FIELD_MODULATION)
                 : "Requires Elite Field Modulation", Misc.getHighlightColor(), 3f);
     }
 
     public static final class EmergencyVent implements AdvanceableListener {
+        private static final String MANEUVER_ID = "peerless_field_modulation_maneuver";
+        private static final float DURATION = 5f;
         private final ShipAPI ship;
         private boolean spent;
         private boolean emergencyVenting;
+        private float maneuverRemaining;
         public EmergencyVent(ShipAPI ship) { this.ship = ship; }
 
         public boolean isEmergencyVenting() {
             return emergencyVenting && ship.getFluxTracker() != null && ship.getFluxTracker().isVenting();
         }
+        public float getManeuverabilityBonus() { return 200f * maneuverRemaining / DURATION; }
+
+        private void applyManeuverability() {
+            var stats = ship.getMutableStats();
+            if (stats == null) return;
+            for (MutableStat stat : new MutableStat[]{stats.getAcceleration(), stats.getDeceleration(),
+                    stats.getTurnAcceleration(), stats.getMaxTurnRate()}) {
+                if (maneuverRemaining > 0f) stat.modifyMult(MANEUVER_ID, 1f + getManeuverabilityBonus() / 100f);
+                else stat.unmodify(MANEUVER_ID);
+            }
+        }
 
         @Override public void advance(float amount) {
             CombatEngineAPI engine = Global.getCombatEngine();
             if (engine != null && engine.isPaused()) return;
-            if (emergencyVenting && (!ship.isAlive() || !eligible(ship) || !isEmergencyVenting())) emergencyVenting = false;
-            if (spent || !ship.isAlive() || !eligible(ship)) return;
             FluxTrackerAPI flux = ship.getFluxTracker();
+            if (!ship.isAlive() || !eligible(ship)) {
+                emergencyVenting = false;
+                maneuverRemaining = 0f;
+                applyManeuverability();
+                return;
+            }
+            if (emergencyVenting && !isEmergencyVenting()) emergencyVenting = false;
+            maneuverRemaining = Math.max(0f, maneuverRemaining - Math.max(0f, amount));
+            applyManeuverability();
+            if (spent) return;
             if (flux == null || !flux.isOverloaded()) return;
             spent = true;
             if (!peerless.combat.BattleUses.claim(ship, "field_modulation")) return;
-            // Detect native overload on the first listener update, then enter the native
-            // vent state directly instead of issuing a player/AI vent command.
+            // Cancellation is unconditional; native ventFlux still enforces venting
+            // restrictions such as Safety Overrides. Neither action erases flux here.
             flux.stopOverload();
             flux.ventFlux();
-            emergencyVenting = true;
+            emergencyVenting = flux.isVenting();
+            maneuverRemaining = DURATION;
+            applyManeuverability();
         }
     }
 }

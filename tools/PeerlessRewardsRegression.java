@@ -57,9 +57,10 @@ public final class PeerlessRewardsRegression {
         f.levels.put("helmsmanship",2f);
         check(!PeerlessSkills.isTrained("helmsmanship") && PeerlessSkills.train("helmsmanship"),"Refunded point can be allocated again");
         PeerlessSkills.unlockAllForTesting();f.skill=0;f.levels.clear();
-        check(PeerlessSkills.refundInactiveTraining()==2 && PeerlessSkills.getPoints()==2,"Free console unlocks cannot generate extra points on reassignment");
+        check(PeerlessSkills.refundInactiveTraining()==14 && PeerlessSkills.getPoints()==14,"Every removed Peerless upgrade refunds a point, including console unlocks");
         check(PeerlessSkills.getSupportedSkillIds().stream().noneMatch(PeerlessSkills::isTrained),"Full reassignment removes all upgrades");
-        System.out.println("PASS: story rewards, durable receipts, reload, legacy campaigns, paid refunds, retraining and free-unlock isolation.");
+        check(PeerlessSkills.refundInactiveTraining()==0 && PeerlessSkills.getPoints()==14,"Repeated refresh cannot refund console upgrades twice");
+        System.out.println("PASS: story rewards, durable receipts, reload, legacy campaigns, paid/test-unlock refunds and retraining.");
     }
 
     static void nativeReassignment() {
@@ -95,6 +96,14 @@ public final class PeerlessRewardsRegression {
         check(PeerlessSkills.refundInactiveTraining()==0&&PeerlessSkills.getPoints()==1,"Repeated refresh cannot duplicate refunds");
         f.levels.put("helmsmanship",2f);
         check(PeerlessSkills.train("helmsmanship")&&PeerlessSkills.getPoints()==0,"Refunded native-memory point can train again");
-        System.out.println("PASS: real native Memory reproduces old crash; null-safe description, confirmed refund, retraining and preview restoration.");
+        PeerlessSkills.unlockAllForTesting();
+        f.levels.clear();f.skill=0f;
+        check(PeerlessSkills.refundInactiveTraining()==14&&PeerlessSkills.getPoints()==14,"Reported save case: one paid and thirteen console-granted upgrades all refund");
+        check(PeerlessSkills.refundInactiveTraining()==0&&PeerlessSkills.getPoints()==14,"Native memory: repeated refresh keeps exactly fourteen points");
+        check(PeerlessSkills.getSupportedSkillIds().stream().noneMatch(PeerlessSkills::isTrained),"Native memory: all refunded training cleared");
+        f.skill=2f;
+        check(PeerlessSkills.train("combat_endurance")&&PeerlessSkills.getPoints()==13,"A refunded test point can train a different skill");
+        check(!PeerlessSkills.awardOnce(ISA),"Refunding preserves story reward receipts");
+        System.out.println("PASS: real native Memory reproduces old crash; safe descriptions, fourteen-point mixed refunds, retraining and preview restoration.");
     }
 }

@@ -1,4 +1,4 @@
-# Peerless Skills - prototype 0.2.18
+# Peerless Skills - prototype 0.2.25
 
 A player-only training layer beyond Elite for Starsector 0.98a. Restart after installing the updated JAR.
 
@@ -14,17 +14,27 @@ Second in Command is optional. Console Commands enables the testing commands bel
 
 Use **Intel > Contacts > [your character] - Peerless training**, then select **Peerless training**, with or without SiC. The contact opens a standard text/options dialogue listing all fourteen skills across two pages. Review an effect, then explicitly spend one Peerless point. Viewing and backing out never spend points. Training requires native Elite level 2.
 
-The introduction appears once per training session. Next/Previous and Back only change the available options. Skill options, effect descriptions and purchase options use the skill's category color: Combat red, Technology blue and Industry yellow. Successful training shows the updated point balance and plays a short three-hit sound. The original sound can be regenerated with `python tools/render_training_sound.py` using NumPy.
+The introduction appears once per training session. Next/Previous and Back only change the available options. Skill options, effect descriptions and purchase options use the skill's category color: Combat red, Technology blue and Industry yellow. Successful training shows the updated point balance and plays Starsector's character level-up sound.
 
 By default, completing the Galatia questline, Hall of Triumph's main quest, and SoS's main story (Menelaus's final Labor debrief) each grants one Peerless point, once per campaign. Already-completed Galatia campaigns receive their point when loaded. Isa and Sinni no longer offer training; use your own contact. Menelaus's legacy post-title route also remains available.
 
 Each newly awarded point produces one clickable campaign notification with your current unspent total. It waits until other screens close, then clicking it opens the training menu. Duplicate reward checks, spending and refunds do not produce new-point notices.
 
-Reassigning a skill so that it no longer has its Elite prerequisite clears its Peerless training and refunds the point after leaving the skill screen. The point can then be spent on another eligible skill. Skills that retain Elite keep their training. Free upgrades newly granted by APSunlock do not refund points.
+Reassigning a skill so that it no longer has its Elite prerequisite clears its Peerless training and refunds one point after leaving the skill screen. The point can then be spent on another eligible skill. Skills that retain Elite keep their training. This also applies to upgrades granted by APSunlock, so removing all fourteen Peerless upgrades returns fourteen points.
 
 In **LunaLib > Peerless Skills**, **Post-cap progression** is off by default. Enable it to earn one Peerless point per **10 post-cap levels**; **Post-cap levels per point** adjusts that ratio from 1 to 100. A post-cap level means one full XP bar at the current level cap. Progress starts when enabled, pauses while disabled, and survives saving. Changing the ratio applies to remaining progress. The selected level-up plugin supplies the cap and XP requirement, including SiC's settings.
 
+LunaLib changes take effect immediately, including while a menu or the console is open. Use `APSProgress` in the console to see whether tracking is enabled and attached, your banked XP bars, the XP required per bar, and your point balance. This command only reads progress; it does not award points or reset tracking.
+
+Characters above the current level cap also earn progress, including after removing a mod that raised the cap. Their level stays unchanged, and each Peerless XP bar still uses the active cap's XP requirement.
+
 With Console Commands, run **APSunlock** during a campaign to train all fourteen upgrades and grant their Elite prerequisites without spending Peerless points. This changes the player's learned skills. AddPeerlessPoint still grants one test point once per campaign; AddPeerlessPoint helmsmanship additionally attempts to train that skill.
+
+## Compatibility notes
+
+**Safety Overrides and Phase Anchor:** Peerless Field Modulation cancels an SO ship's first overload and grants the maneuverability boost, allowing weapons to fire again. It does not clear flux or bypass SO's no-vent restriction. A lethal hit can trigger both Phase Anchor and Peerless Combat Endurance; Enduring does not stop the emergency retreat.
+
+**Other mod interactions:** UAF's Optimized Ordnance Assembly stacks with Peerless missile regeneration; the green bar tracks only Peerless progress. Field Modulation's forced vent drains RAT's Phaseshift Shield charge, and its overload cancellation also works on scripted overloads such as Tahlan's Daemonic Heart penalty. Hullmods that multiply top speed also scale Helmsmanship's burst, including its nominal +100 cap.
 
 ## Effects
 
@@ -34,7 +44,7 @@ With Console Commands, run **APSunlock** during a campaign to train all fourteen
 | Combat Endurance | Once per battle, crossing 10% hull triggers five seconds at that hull floor. Enduring! text on hits and native Damper Field jitter visuals; no Damper damage reduction. |
 | Impact Mitigation | +100% ship mass. |
 | Damage Control | Engine/weapon repair speed increases by current CR percentage. At 70% CR, repair time is multiplied by 1/1.7. |
-| Field Modulation | Once per battle, first overload converts to a forced native vent on the next listener update. |
+| Field Modulation | Cancel the first overload each battle and vent if able. Gain +200% maneuverability, fading to zero over five seconds. Safety Overrides ships cancel the overload but cannot vent. |
 | Point Defense | PD hits add EMP equal to 10% of weapon damage. Shields block it. |
 | Target Analysis | Unshielded hits cause five-second Disintegrator armor decay: min(10% of hit damage, 100) total. Cannot damage hull. |
 | Ballistic Mastery | All weapons ramp to +100% autofire accuracy and 100% recoil reduction over five seconds of firing, then decay to zero over half a second without firing. |
@@ -83,6 +93,6 @@ Optional XP progression uses an isolated 0.98a adapter around the selected level
 
 Run python tools/wire_story_training.py to remove obsolete Isa/Sinni training rules from installed optional story mods while preserving their completion rewards. It is idempotent and backs up records under build/story-training-backups, preserving every unrelated CSV record byte-for-byte. The installed Chief Navigator development JAR also removes Sinni's contact button; these optional-mod changes are local and are not bundled in this repository.
 
-Live playtests have confirmed Helmsmanship, Missile Specialization, Combat Endurance, Field Modulation and Ordnance Expertise in combat, along with Peerless descriptions/artwork in SiC and combat status entries. The latest training colors, reassignment crash fix and consolidated decay visuals still need live confirmation. This prototype does not change enabled mods, edit save files or advance story progression.
+Live playtests have confirmed Helmsmanship, Missile Specialization, Combat Endurance, Field Modulation and Ordnance Expertise in combat, along with Peerless descriptions/artwork in SiC, training category colors and combat status entries. Phase Anchor and Combat Endurance triggering together has also been confirmed and is retained. The reassignment crash fix and consolidated decay visuals still need live confirmation. This prototype does not change enabled mods, edit save files or advance story progression.
 
 Original code uses the included MIT license. Starsector data and derived artwork remain subject to Fractal Softworks' rights.

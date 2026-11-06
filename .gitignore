@@ -2,5 +2,7 @@
 /build/
 /jars/PeerlessSkills.next*.jar
 /jars/PeerlessSkills.jar
+# Keep intermediate builds local; explicitly add the active release JAR.
+/jars/PeerlessSkills-*.jar
 __pycache__/
 *.py[cod]

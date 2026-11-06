@@ -158,3 +158,60 @@ The accompanying display correction adds descriptions for all fourteen trained s
 
 - Skill options, effect descriptions and purchase options now use the governing aptitude color supplied by the public skill API: Combat red, Technology blue, Industry yellow. Navigation and general training messages retain their ordinary colors.
 - Uses the public option/text color overloads; no reflection or internal UI hooks. Live dialog appearance awaits restart/playtest.
+
+## Refund test unlocks - prototype 0.2.19
+
+- The user reports removing all fourteen Peerless upgrades but receiving only one point. Read-only inspection of the currently loaded campaign's saved state shows one paid Helmsmanship upgrade and thirteen APSunlock upgrades. The previous refund logic deliberately excluded test unlocks.
+- Removed that exception: every removed Peerless upgrade returns one point, regardless of how it was obtained. Each upgrade is still cleared once; later refreshes cannot refund it again. Restoring Elite during reassignment keeps existing training, and quest reward receipts remain unchanged.
+- The existing native-memory regression now reproduces the one-paid/thirteen-test state and expects fourteen refunds, no duplicate refunds, and successful retraining using a refunded point. No saves were edited.
+- The user's latest screenshot confirms the category-colored training options appear in-game.
+
+## Vanilla level-up sound - prototype 0.2.20
+
+- The user clarified that the requested training cue is Starsector's existing character level-up sound. Successful Peerless training now plays `ui_char_level_up`, confirmed in the installed game's sound configuration.
+- Removed the custom sound registration, WAV and synthesis tool. Preview, navigation, failed/stale purchases and APSunlock remain silent.
+
+## XP settings timing - prototype 0.2.21
+
+- User confirms the failed XP test was already at the cap. Their Luna settings enable progression at one XP bar per point; the log contains repeated numeric `ADDXP 10000000` grants. The older on-disk save does not establish the unsaved character's current level.
+- Reproduced a timing defect with the native CharacterStats and Memory classes: enable progression through a Luna settings event, award XP before the next campaign frame, then advance. Previously the hook attached after XP had wrapped and awarded zero points. Attach/detach now happens in LunaLib's settings listener immediately; campaign updates remain a fallback. Ratio changes preserve the baseline and banked progress. No reflection or copied engine functions were added to production code.
+- Added the read-only `APSProgress` console command to report enabled/attached state, level/cap, current/recorded XP, XP per bar, banked progress, XP rewards and available points. It does not install the tracker or pay pending rewards, so it can diagnose a missing hook without concealing it.
+- The regression now uses native Memory as well as native XP calculations. It covers immediate enable/disable, XP before a campaign update, ratio changes, unrelated settings events, reload listener deduplication and read-only diagnostics. This reproduces one failure path; it does not yet establish that the timing gap explains every part of the user's live report.
+- Built 0.2.21 and passed all fifteen suites. The XP regression also passes with the installed Mikohime runtime ahead of the vanilla engine on the classpath. No live campaign or save was altered. Restart, run `APSProgress` before and after a numeric XP grant at the cap, then close the console to allow pending rewards to pay out.
+
+## XP above a lowered level cap - prototype 0.2.22
+
+- The new live `APSProgress` log identifies the actual failure: progression enabled, tracker attached, player level 22, active cap 15, XP 19,572,481, zero banked progress and a four-million-XP bar. The user recalls using A New Level of Confidence. The adapter listened for the cap-plus-one query (16), but native CharacterStats asks for the actual-level-plus-one query (23).
+- Reproduced that exact state against native CharacterStats, Memory and the installed authored LevelupPluginImpl source. The 0.2.21 runtime fails on the first ten-million-XP grant. The regression compiles that existing game source into test output only; no game implementation is bundled in the mod.
+- The observer now follows the player's actual level at or above the cap. Its recorded post-update XP baseline also follows the actual level's range, including the native 100k wrap interval for non-increasing thresholds. Peerless reward size remains the active cap's full XP bar. Native XP, story points, level and ordinary skill points are left to the game's own update.
+- Added a control run without Peerless and comparison against the patched run, repeated large awards without campaign frames, small partial grants, exact recorded-versus-native XP, unchanged native rewards, tooltip queries and reload. Old unrecorded XP is not reconstructed or granted retroactively.
+- User confirms A New Level of Confidence was installed and then disabled, explaining the retained level above the active cap. Built 0.2.22; all fifteen suites pass, and the exact-state regression also passes against the installed Mikohime runtime. The runtime JAR contains no bundled game test classes. Live campaign confirmation still requires restarting into the new JAR.
+
+## Field Modulation maneuverability - prototype 0.2.23
+
+- The first Peerless Field Modulation trigger now grants +200% acceleration, deceleration, turn acceleration and maximum turn rate, decaying linearly to zero over five seconds. It uses a separate modifier from Helmsmanship, does not raise top speed, freezes while paused and removes its modifiers on expiry or loss of eligibility. The five-second duration continues if the vent ends early.
+- User explicitly clarified that Safety Overrides must retain its no-vent restriction. No vent-stat override is applied. The existing overload cancellation remains; native ventFlux refuses the SO vent, while the independent maneuverability boost still triggers. Existing flux is not erased.
+- Updated skill/training text and the combat status entry to show the current maneuverability bonus. The regression uses the installed authored SafetyOverrides hullmod and native ship stats/flux tracker to verify that venting remains prohibited before, during and after the boost. Game sources are compiled only into test output.
+- Built 0.2.23 and passed all fifteen suites, including native SO overload cancellation, unchanged hard/current flux and vent modifier, five-second movement decay, pause, early vent completion, stacking, eligibility/death cleanup, battle receipts and HUD values. No live combat was operated; restart to test handling in-game.
+
+## Retain the Safety Overrides overload - prototype 0.2.24
+
+- User reports being able to fire during the first buffed SO overload. The prior implementation cleared overload before attempting a vent; SO refused the vent, leaving neither restriction active. The previous regression explicitly expected that cancellation, so it did not catch the incorrect behavior.
+- Field Modulation now checks for a positive vent rate and dissipation before cancelling overload. SO ships retain their original overload and receive only the five-second maneuverability boost. Ships that can vent keep the overload-to-vent behavior. Updated skill/training text accordingly.
+- The native SO regression now requires the overload to remain active, with unchanged remaining duration, flux and vent restriction. Repeated effect updates must not cancel it. After explicitly ending the overload, the test confirms SO still cannot vent.
+- Built 0.2.24 and passed all fifteen suites, including the corrected native SO overload assertion and the normal forced-vent path. Weapon firing has not been tested in live combat; restart is required to load the patch.
+
+## Unconditional first-overload cancellation - prototype 0.2.25
+
+- User confirmed that cancelling the first overload on SO is intended. Restore unconditional cancellation; native venting restrictions still apply, so SO gets the cancellation and maneuverability without venting. This supersedes 0.2.24's behavior.
+- Skill/training wording: "Cancel the first overload that occurs and, if able, vent. Gain +200% maneuverability for five seconds." Retain the originally requested linear five-second decay, once-per-battle limit and unchanged flux.
+- Updated the native SO regression to require immediate cancellation, no vent, unchanged flux/restriction, independent movement decay and no cancellation of a second overload.
+- Built 0.2.25 and passed all fifteen suites. Restart is required to load the updated behavior and wording; no live campaign was operated.
+
+## Accepted hullmod interactions - 0.2.25 release
+
+- The player confirmed live that Phase Anchor and Peerless Combat Endurance trigger together. Retain both effects, including the emergency retreat, and document the interaction.
+- Retain Helmsmanship's existing interaction with top-speed multipliers. Its burst calculation does not divide by the speed modifier, including when that modifier is zero.
+- Added two short compatibility blurbs to the README and release notes: SO/Phase Anchor behavior, and UAF/RAT/Tahlan plus speed-multiplier interactions.
+- The audit used installed sources and headless reproductions with native stat/listener classes and the UAF hullmod. It reproduced the speed multiplier behavior, simultaneous Phase Anchor/Enduring activation, and independent UAF/Peerless missile refills. Other interactions were inspected in source; compiled-only mods and indirect scripts are not comprehensively covered.
+- No gameplay changes were made for this audit or release documentation.

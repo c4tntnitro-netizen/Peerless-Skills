@@ -82,10 +82,13 @@ public final class PeerlessCombatStatusRegression {
         }
         check(status(shown,"combat_endurance").effect().endsWith("5.0s"),"Enduring time is shown");
         check(status(shown,"helmsmanship").effect().startsWith("+100 speed"),"Initial speed bonus shown");
+        check(status(shown,"field_modulation").effect().equals("+200% maneuverability"),"Field Modulation shows its new active bonus");
         check(status(shown,"ballistic_mastery").effect().equals("+100% accuracy, -100% recoil"),"Actual firing ramp shown");
         Map<String,Status> beforePause=new HashMap<>(shown);paused[0]=true;
         controller.advance(10f);enduring.advance(10f);emergency.advance(10f);shown.clear();plugin.advance(10f,List.of());
         check(shown.equals(beforePause),"Paused HUD stays visible without advancing effects");
+        paused[0]=false;emergency.advance(2.5f);shown.clear();plugin.advance(0f,List.of());
+        check(status(shown,"field_modulation").effect().equals("+100% maneuverability"),"Field Modulation HUD follows decay");
         paused[0]=false;controller.advance(.375f);enduring.advance(.375f);shown.clear();plugin.advance(0f,List.of());
         check(status(shown,"systems_expertise").effect().equals("25% less hull damage"),"Protection displays its decay");
         check(status(shown,"helmsmanship").effect().startsWith("+62.5 speed"),"Speed displays its decay");
@@ -93,6 +96,9 @@ public final class PeerlessCombatStatusRegression {
         check(!shown.containsKey("peerless_status_systems_expertise") && status(shown,"ballistic_mastery").effect().startsWith("+50%"),"Expired protection disappears while accuracy decays");
         controller.advance(.5f);enduring.advance(5f);venting[0]=false;emergency.advance(0f);
         missile.ammo=missile.max;cr[0]=0f;energyBonus[0]=1f;op[0]=0;controller.advance(0f);
+        shown.clear();plugin.advance(0f,List.of());
+        check(status(shown,"field_modulation").effect().equals("+100% maneuverability"),"Movement HUD persists after early vent completion");
+        emergency.advance(2.5f);
         shown.clear();plugin.advance(0f,List.of());
         check(shown.keySet().equals(Set.of("peerless_status_impact_mitigation","peerless_status_point_defense","peerless_status_target_analysis","peerless_status_gunnery_implants")),"Expired, completed and zero-value bonuses stop being refreshed");
         venting[0]=true;controller.advance(0f);shown.clear();plugin.advance(0f,List.of());

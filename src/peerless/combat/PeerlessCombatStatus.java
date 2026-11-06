@@ -30,8 +30,10 @@ public final class PeerlessCombatStatus {
             show(engine, "damage_control", "+" + percent(ship.getCurrentCR()) + "% repair speed");
         if (active(ship, "field_modulation")) {
             var listeners = ship.getListeners(PeerlessFieldModulation.EmergencyVent.class);
-            if (listeners != null) for (var effect : listeners) if (effect.isEmergencyVenting()) {
-                show(engine, "field_modulation", "Overload replaced by forced vent");
+            if (listeners != null) for (var effect : listeners) if (effect.isEmergencyVenting() || effect.getManeuverabilityBonus() > 0f) {
+                show(engine, "field_modulation", effect.getManeuverabilityBonus() > 0f
+                        ? "+" + number(effect.getManeuverabilityBonus()) + "% maneuverability"
+                        : "Overload replaced by forced vent");
                 break;
             }
         }
