@@ -21,7 +21,11 @@ public final class PeerlessCombatPlugin extends BaseEveryFrameCombatPlugin {
     @Override public void advance(float amount, List<InputEventAPI> events) {
         CombatEngineAPI engine = Global.getCombatEngine();
         if (engine == null || Global.getSector() == null) return;
-        if(engine.isPaused()) { missileHud.update(engine,controllers.get(engine.getPlayerShip()));return; }
+        if(engine.isPaused()) {
+            missileHud.update(engine,controllers.get(engine.getPlayerShip()));
+            PeerlessCombatStatus.update(engine,controllers.get(engine.getPlayerShip()));
+            return;
+        }
         updateCommanderCap();
         for (ShipAPI ship : engine.getShips()) {
             if (!controllers.containsKey(ship) && player(ship)) {
@@ -39,6 +43,7 @@ public final class PeerlessCombatPlugin extends BaseEveryFrameCombatPlugin {
             }
         }
         missileHud.update(engine,controllers.get(engine.getPlayerShip()));
+        PeerlessCombatStatus.update(engine,controllers.get(engine.getPlayerShip()));
     }
     public static boolean player(ShipAPI ship) {
         return Global.getSector() != null && ship.getCaptain() != null
@@ -91,6 +96,12 @@ public final class PeerlessCombatPlugin extends BaseEveryFrameCombatPlugin {
             // Entering combat with a system already active must not synthesize an activation.
             systemWasActive = ship.getSystem() != null && ship.getSystem().isActive();
         }
+        boolean controls(ShipAPI candidate) { return ship == candidate; }
+        boolean hasSpeedBurst() { return systemAge >= 0f && systemAge < 1f; }
+        float speedBonus() { return hasSpeedBurst() ? burstSpeed * (1f - systemAge) : 0f; }
+        float systemAge() { return systemAge; }
+        float accuracyBonus() { return firingBonus; }
+        boolean hasMassBonus() { return originalMass != null; }
         @Override public void advance(float amount) {
             CombatEngineAPI engine = Global.getCombatEngine();
             if (engine == null || engine.isPaused()) return;

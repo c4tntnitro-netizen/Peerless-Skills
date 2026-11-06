@@ -1,0 +1,4 @@
+fieldID,fieldName,fieldType,defaultValue,secondaryValue,fieldDescription,minValue,maxValue,tab
+peerless_progressionHeader,Progression,Header,Peerless progression,,,,,
+peerless_postCapProgression,Post-cap progression,Boolean,false,,Earn additional Peerless points from XP gained after reaching your level cap. Quest rewards remain available with this disabled.,,,
+peerless_levelsPerPoint,Post-cap levels per point,Int,10,,Number of full post-cap XP bars required for one Peerless point. Applies to unspent XP progress; XP earned while disabled does not count.,1,100,

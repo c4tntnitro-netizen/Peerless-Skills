@@ -49,6 +49,7 @@ public final class PeerlessCombatEndurance extends BaseSkillEffectDescription
         private float remaining;
         private float textCooldown;
         public Enduring(ShipAPI ship) { this.ship = ship; }
+        public float getRemaining() { return remaining; }
 
         @Override public boolean notifyAboutToTakeHullDamage(Object source, ShipAPI target,
                 Vector2f point, float damage) {

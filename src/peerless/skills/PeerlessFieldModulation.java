@@ -45,12 +45,18 @@ public final class PeerlessFieldModulation extends BaseSkillEffectDescription
     public static final class EmergencyVent implements AdvanceableListener {
         private final ShipAPI ship;
         private boolean spent;
+        private boolean emergencyVenting;
         public EmergencyVent(ShipAPI ship) { this.ship = ship; }
 
+        public boolean isEmergencyVenting() {
+            return emergencyVenting && ship.getFluxTracker() != null && ship.getFluxTracker().isVenting();
+        }
+
         @Override public void advance(float amount) {
-            if (spent || !ship.isAlive() || !eligible(ship)) return;
             CombatEngineAPI engine = Global.getCombatEngine();
             if (engine != null && engine.isPaused()) return;
+            if (emergencyVenting && (!ship.isAlive() || !eligible(ship) || !isEmergencyVenting())) emergencyVenting = false;
+            if (spent || !ship.isAlive() || !eligible(ship)) return;
             FluxTrackerAPI flux = ship.getFluxTracker();
             if (flux == null || !flux.isOverloaded()) return;
             spent = true;
@@ -59,6 +65,7 @@ public final class PeerlessFieldModulation extends BaseSkillEffectDescription
             // vent state directly instead of issuing a player/AI vent command.
             flux.stopOverload();
             flux.ventFlux();
+            emergencyVenting = true;
         }
     }
 }

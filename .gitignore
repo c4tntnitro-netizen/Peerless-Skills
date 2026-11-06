@@ -1,5 +1,6 @@
 /out*/
 /build/
 /jars/PeerlessSkills.next*.jar
+/jars/PeerlessSkills.jar
 __pycache__/
 *.py[cod]

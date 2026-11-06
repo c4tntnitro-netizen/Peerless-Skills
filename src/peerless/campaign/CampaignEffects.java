@@ -12,6 +12,11 @@ public final class CampaignEffects implements EveryFrameScript {
     public boolean runWhilePaused() { return true; }
     public void advance(float amount) {
         if (Global.getSector()==null || Global.getSector().getPlayerFleet()==null) return;
+        PeerlessProgression.advance();
+        var ui = Global.getSector().getCampaignUI();
+        if (ui != null && ui.getCurrentCoreTab() == null && !ui.isShowingDialog() && !ui.isShowingMenu())
+            PeerlessSkills.refundInactiveTraining();
+        PeerlessPointNotifications.showPending();
         PeerlessCombatPlugin.updateCommanderCap();
         for (FleetMemberAPI member : Global.getSector().getPlayerFleet().getFleetData().getMembersListCopy()) {
             boolean player=member.getCaptain()==Global.getSector().getPlayerPerson();

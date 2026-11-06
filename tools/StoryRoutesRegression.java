@@ -22,14 +22,18 @@ public final class StoryRoutesRegression {
         Path cn=mods.resolve("Chief Navigator/data/campaign/rules.csv");
         if(Files.exists(cn)) {
             var rows=read(cn);
-            check(rows.get("chiefNavigatorSinniPeerlessOpen").getString("script").contains("PeerlessSkillsCMD open"),"Sinni opens shared training");
+            check(rows.keySet().stream().noneMatch(id->id.startsWith("chiefNavigatorSinniPeerless")),"Sinni training rules removed");
+            String trial=Files.readString(mods.resolve("Chief Navigator/src/chiefnavigator/quest/MenelausTrial.java"));
+            check(trial.contains("peerless.api.PeerlessSkills.awardOnce(DOMAIN_EPIC)"),"Final Labor reward preserved");
+            check(trial.contains("memory().set(FINAL_DEBRIEF_COMPLETE, true);\n        receiveDomainEpic();")
+                    || trial.contains("memory().set(FINAL_DEBRIEF_COMPLETE, true);\r\n        receiveDomainEpic();"),"Final debrief still grants its reward automatically");
         }
         Path hot=mods.resolve("HallOfTriumph/data/campaign/rules.csv");
         if(Files.exists(hot)) {
             var rows=read(hot);
-            check(rows.get("shipTrophyIsaPeerlessOpen").getString("script").equals("PeerlessSkillsCMD open"),"Isa opens shared training");
-            check(!rows.get("shipTrophyIsaPeerlessSpent").optString("script").contains("SetEnabled"),"Spent points do not prevent viewing Isa training");
+            check(rows.keySet().stream().filter(id->id.startsWith("shipTrophyIsaPeerless")).toList().equals(List.of("shipTrophyIsaPeerlessAward")),"Isa training removed; only reward rule retained");
             check(rows.get("shipTrophyIsaPeerlessAward").getString("script").equals("PeerlessSkillsCMD award ship_trophy_room_peerless_isa_v1"),"Story award preserved");
+            check(rows.get("shipTrophyIsaPeerlessAward").getString("conditions").contains("GanEdenQuestCMD questCompleted"),"HoT award remains gated by main quest completion");
         }
         Path sic=mods.resolve("SecondInCommand/src/second_in_command/ui/SCPlayerPanel.kt");
         if(Files.exists(sic)) {

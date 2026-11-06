@@ -12,6 +12,8 @@ public final class PeerlessModPlugin extends BaseModPlugin {
         peerless.skills.NativeSkillDescriptions.install();
         PeerlessSkillIcon.install();
         peerless.campaign.PlayerContact.install();
+        peerless.campaign.PeerlessPointNotifications.install();
+        peerless.campaign.PeerlessProgression.install();
         com.fs.starfarer.api.Global.getSector().removeTransientScriptsOfClass(peerless.campaign.CampaignEffects.class);
         com.fs.starfarer.api.Global.getSector().addTransientScript(new peerless.campaign.CampaignEffects());
     }

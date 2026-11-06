@@ -2,6 +2,9 @@ package peerless.skills;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.SectorAPI;
+import com.fs.starfarer.api.characters.SkillSpecAPI;
+import com.fs.starfarer.api.ui.TooltipMakerAPI;
+import com.fs.starfarer.campaign.rules.Memory;
 import peerless.api.PeerlessSkills;
 import java.util.HashMap;
 import static peerless.skills.PeerlessFixture.*;
@@ -18,6 +21,7 @@ public final class PeerlessRewardsRegression {
         }));
     }
     public static void main(String[] args) {
+        nativeReassignment();
         for (String first : new String[]{ISA, SINNI}) {
             String second = first.equals(ISA) ? SINNI : ISA;
             PeerlessFixture f = new PeerlessFixture();
@@ -43,6 +47,54 @@ public final class PeerlessRewardsRegression {
         }
         Global.setSector(null);
         check(!PeerlessSkills.awardOnce(ISA) && PeerlessSkills.getPoints()==0, "No campaign");
-        System.out.println("PASS: both story orders, two banked points, one spend, repeat claims, reload and existing campaigns.");
+        PeerlessFixture f=new PeerlessFixture();load(f);
+        PeerlessSkills.awardOnce(ISA);PeerlessSkills.awardOnce(SINNI);
+        PeerlessSkills.train("helmsmanship");PeerlessSkills.train("impact_mitigation");
+        f.levels.put("helmsmanship",0f);
+        check(PeerlessSkills.refundInactiveTraining()==1 && PeerlessSkills.getPoints()==1,"Removing Elite refunds its paid training");
+        check(!PeerlessSkills.isTrained("helmsmanship") && PeerlessSkills.isTrained("impact_mitigation"),"Only reassigned skill loses training");
+        check(PeerlessSkills.refundInactiveTraining()==0,"Refund is not repeated");
+        f.levels.put("helmsmanship",2f);
+        check(!PeerlessSkills.isTrained("helmsmanship") && PeerlessSkills.train("helmsmanship"),"Refunded point can be allocated again");
+        PeerlessSkills.unlockAllForTesting();f.skill=0;f.levels.clear();
+        check(PeerlessSkills.refundInactiveTraining()==2 && PeerlessSkills.getPoints()==2,"Free console unlocks cannot generate extra points on reassignment");
+        check(PeerlessSkills.getSupportedSkillIds().stream().noneMatch(PeerlessSkills::isTrained),"Full reassignment removes all upgrades");
+        System.out.println("PASS: story rewards, durable receipts, reload, legacy campaigns, paid refunds, retraining and free-unlock isolation.");
+    }
+
+    static void nativeReassignment() {
+        PeerlessFixture f=new PeerlessFixture();Memory memory=new Memory();
+        Global.setSector(mock(SectorAPI.class,(n,a)->switch(n) {
+            case "getMemoryWithoutUpdate" -> memory;
+            case "getPlayerStats" -> f.stats;
+            case "getPlayerPerson" -> f.player;
+            default -> null;
+        }));
+        check(!PeerlessSkills.isTrained("helmsmanship"),"Native memory: fresh campaign has no training");
+        memory.set(PeerlessSkills.TRAINED,null);
+        boolean nativeNullFailure=false;
+        try { memory.getString(PeerlessSkills.TRAINED); }
+        catch(NullPointerException expected){nativeNullFailure=true;}
+        check(nativeNullFailure,"Reproduce the native null-string exception from the crash log");
+        check(!PeerlessSkills.isTrained("helmsmanship"),"Previously cleared/null training reads safely");
+        SkillSpecAPI skill=mock(SkillSpecAPI.class,(n,a)->n.equals("getId")?"helmsmanship":null);
+        TooltipMakerAPI tooltip=mock(TooltipMakerAPI.class,(n,a)->{
+            throw new AssertionError("Untrained skill must not draw a Peerless description");
+        });
+        new PeerlessDescription().createCustomDescription(f.stats,skill,tooltip,500f);
+        check(PeerlessSkills.awardOnce(ISA)&&PeerlessSkills.train("helmsmanship"),"Native memory: train after old null state");
+        // Skill-screen previews still retain ownership; refund is explicitly after confirmation/closing.
+        f.levels.put("helmsmanship",0f);
+        check(PeerlessSkills.isTrained("helmsmanship"),"Lowering skill during reassignment preserves training until refund");
+        f.levels.put("helmsmanship",1f);f.levels.put("helmsmanship",2f);
+        check(PeerlessSkills.isTrained("helmsmanship")&&PeerlessSkills.refundInactiveTraining()==0,"Restoring Elite keeps Peerless without a new charge");
+        f.levels.put("helmsmanship",0f);
+        check(PeerlessSkills.refundInactiveTraining()==1&&PeerlessSkills.getPoints()==1,"Confirmed reassignment refunds once with native memory");
+        check(!memory.contains(PeerlessSkills.TRAINED)&&!PeerlessSkills.isTrained("helmsmanship"),"Refund removes the key instead of storing null");
+        new PeerlessDescription().createCustomDescription(f.stats,skill,tooltip,500f);
+        check(PeerlessSkills.refundInactiveTraining()==0&&PeerlessSkills.getPoints()==1,"Repeated refresh cannot duplicate refunds");
+        f.levels.put("helmsmanship",2f);
+        check(PeerlessSkills.train("helmsmanship")&&PeerlessSkills.getPoints()==0,"Refunded native-memory point can train again");
+        System.out.println("PASS: real native Memory reproduces old crash; null-safe description, confirmed refund, retraining and preview restoration.");
     }
 }

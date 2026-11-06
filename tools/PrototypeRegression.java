@@ -15,7 +15,7 @@ import peerless.campaign.TrainingDialog;
 import java.util.*;
 import static peerless.skills.PeerlessFixture.*;
 
-/** Invokes the real controller/listeners and native Disintegrator lifecycle, with public API entities. */
+/** Invokes real controllers, listeners and the shared Disintegrator visual with public API entities. */
 public final class PrototypeRegression {
     static void near(float actual,float expected,String why) { check(Math.abs(actual-expected)<.002f, why+": "+actual+" != "+expected); }
     static final class Launcher {
@@ -91,8 +91,11 @@ public final class PrototypeRegression {
         List<Float> emp=new ArrayList<>();
         Vector2f visualLocation=new Vector2f();
         CombatEntityAPI visual=mock(CombatEntityAPI.class,(n,a)->n.equals("getLocation")?visualLocation:null);
+        Map<String,Object> combatData=new HashMap<>();
         CombatEngineAPI engine=mock(CombatEngineAPI.class,(n,a)->switch(n) {
             case "isPaused" -> paused[0];
+            case "isEntityInPlay" -> true;
+            case "getCustomData" -> combatData;
             case "getShips" -> List.of(ship);
             case "getPlayerShip" -> ship;
             case "addLayeredRenderingPlugin" -> { ArmorDecay d=(ArmorDecay)a[0]; d.init(visual); decays.add(d); yield visual; }
@@ -201,8 +204,9 @@ public final class PrototypeRegression {
         range.modifyDamageDealt(projectile,ship,hit,new Vector2f(2000f,0f),false);
         near(modifier.getPercentMod(),0f,"Energy bonus ends at 2000");
         float tickStart=sum(armor);
-        decays.get(1).advance(.5f);
-        near(tickStart-sum(armor),1f,"A 0.1s beam tick schedules ten total armor damage, not 100");
+        check(decays.size()==1,"Projectile and beam damage share one target renderer");
+        decays.get(0).advance(.5f);
+        near(tickStart-sum(armor),6f,"Shared first tick includes five projectile damage plus one normalized beam damage");
         near(ArmorDecay.applyArmorTick(ship,new Vector2f(),100f,1f),100f,"Native weighted armor patch totals damage");
         for(float[] row:armor)Arrays.fill(row,0f);
         near(ArmorDecay.applyArmorTick(ship,new Vector2f(),100f,1f),0f,"No armor spillover into hull");

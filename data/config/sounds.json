@@ -1,0 +1,7 @@
+{
+  "peerless_training_complete": {
+    "sounds": [
+      { "file": "sounds/peerless/training_complete.wav", "pitch": 1.0, "volume": 0.7 }
+    ]
+  }
+}

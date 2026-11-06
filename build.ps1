@@ -7,7 +7,7 @@ $out = Join-Path $root ('build/' + [guid]::NewGuid())
 $classes = Join-Path $out 'classes'
 $jarDir = Join-Path $root 'jars'
 New-Item -ItemType Directory -Force -Path $classes,$jarDir | Out-Null
-$cp = (Join-Path $game 'starsector-core/*') + ';' + (Join-Path $mods 'Console Commands/jars/lw_Console.jar') + ';' + (Join-Path $mods 'SecondInCommand/jars/SecondInCommand.jar')
+$cp = (Join-Path $game 'starsector-core/*') + ';' + (Join-Path $mods 'Console Commands/jars/lw_Console.jar') + ';' + (Join-Path $mods 'SecondInCommand/jars/SecondInCommand.jar') + ';' + (Join-Path $mods 'LunaLib/jars/LunaLib.jar')
 $sources = @(Get-ChildItem (Join-Path $root 'src') -Recurse -Filter '*.java' | ForEach-Object FullName)
 & (Join-Path $jdk 'javac.exe') --release 17 -encoding UTF-8 -cp $cp -d $classes $sources
 if ($LASTEXITCODE) { throw 'Peerless Skills compilation failed' }

@@ -28,8 +28,10 @@ class PeerlessFixture {
         n.equals("getMod")?dynamicMods.computeIfAbsent((String)a[0], key->new com.fs.starfarer.api.combat.StatBonus()):null);
     final MemoryAPI memory=mock(MemoryAPI.class,(n,a)->{
         if(n.equals("getBoolean")) return Boolean.TRUE.equals(saved.get(a[0]));
-        if(n.equals("get")||n.equals("getString")) return saved.get(a[0]);
+        if(n.equals("get")) return saved.get(a[0]);
+        if(n.equals("getString")) return saved.containsKey(a[0])?saved.get(a[0]).toString():null;
         if(n.equals("set")) saved.put((String)a[0],a[1]);
+        if(n.equals("unset")) saved.remove(a[0]);
         return null;
     });
     final MutableCharacterStatsAPI stats=mock(MutableCharacterStatsAPI.class,(n,a)->{
