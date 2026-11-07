@@ -1,0 +1,37 @@
+[b]Peerless Skills v0.1 - Starsector 0.98a-RC8[/b]
+
+[url=https://github.com/c4tntnitro-netizen/Peerless-Skills/releases/tag/v0.1]Download v0.1[/url] | [url=https://raw.githubusercontent.com/c4tntnitro-netizen/Peerless-Skills/main/docs/assets/peerless_effects_2x.png]All fourteen skill effects[/url]
+
+Peerless Skills adds a third tier beyond Elite, with an upgrade for each of the game's fourteen Elite skills. These upgrades apply to the player only. Vanilla skills and Second in Command are both supported.
+
+[img]https://raw.githubusercontent.com/c4tntnitro-netizen/Peerless-Skills/main/docs/assets/peerless-skills-screenshot.png[/img]
+
+A few examples:
+[list]
+[li][b]Helmsmanship:[/b] Activating your ship system grants a brief speed and maneuverability boost.[/li]
+[li][b]Combat Endurance:[/b] Once per battle, prevents your hull from dropping below 10% for five seconds.[/li]
+[li][b]Field Modulation:[/b] Cancels your first overload, vents if able, and grants +200% maneuverability that fades over five seconds.[/li]
+[li][b]Missile Specialization:[/b] Large missile launchers slowly regenerate ammo after depletion.[/li]
+[/list]
+
+[b]Training[/b]
+
+Open [b]Intel > Contacts > your character's Peerless training contact[/b]. Each upgrade costs one Peerless point and requires its Elite skill. Reassigning that Elite skill refunds its Peerless point. Officers and SiC executive officers do not receive Peerless upgrades.
+
+Completing the Galatia questline grants one Peerless point. Compatible versions of HoT and SoS also grant one point each for completing their main stories. Each point award gives a notification that opens training when clicked.
+
+Optional post-cap XP progression is [b]off by default[/b]. Enable it through LunaLib to earn additional points; the default is one point per ten full post-cap XP bars, with an adjustable ratio.
+
+[b]Compatibility notes[/b]
+
+[b]Safety Overrides and Phase Anchor:[/b] Field Modulation cancels an SO ship's first overload and grants the maneuverability boost, allowing weapons to fire again. It does not clear flux or bypass SO's no-vent restriction. A lethal hit can trigger both Phase Anchor and Combat Endurance; Enduring does not stop the emergency retreat.
+
+[b]Other mods:[/b] UAF's Optimized Ordnance Assembly stacks with Peerless missile regeneration; the green reload bar tracks only Peerless progress. Field Modulation's forced vent drains RAT's Phaseshift Shield charge, and its cancellation also works on scripted overloads such as Tahlan's Daemonic Heart penalty. Hullmods that multiply top speed also scale Helmsmanship's burst, including its nominal +100 cap.
+
+[b]Installation[/b]
+
+Download [b]Peerless-Skills-v0.1.zip[/b], extract the [b]Peerless Skills[/b] folder into [b]Starsector/mods[/b], enable it in the launcher, and restart. Replace older copies instead of installing a second copy alongside them.
+
+Second in Command, LunaLib and Console Commands are optional. With Console Commands installed, [b]APSunlock[/b] unlocks all fourteen upgrades for testing.
+
+For bug reports, please include your mod list, the affected ship and hullmods, and starsector.log.
