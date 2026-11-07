@@ -215,3 +215,9 @@ The accompanying display correction adds descriptions for all fourteen trained s
 - Added two short compatibility blurbs to the README and release notes: SO/Phase Anchor behavior, and UAF/RAT/Tahlan plus speed-multiplier interactions.
 - The audit used installed sources and headless reproductions with native stat/listener classes and the UAF hullmod. It reproduced the speed multiplier behavior, simultaneous Phase Anchor/Enduring activation, and independent UAF/Peerless missile refills. Other interactions were inspected in source; compiled-only mods and indirect scripts are not comprehensively covered.
 - No gameplay changes were made for this audit or release documentation.
+
+## Release naming and compatibility - v0.1
+
+- Corrected the public v0.1 package name, manifest version, runtime filename and README to use 0.1. Set the supported game version to 0.98a-RC8 as specified by the user.
+- Runtime JAR bytes are unchanged from the tested 0.2.25 prototype; this is a packaging/metadata correction. The prior fifteen-suite result still applies to the same executable code.
+- Package validation checks one declared runtime JAR, matching version/game-version metadata, identical runtime bytes, and the archive checksum.

@@ -1,6 +1,6 @@
-# Peerless Skills - prototype 0.2.25
+# Peerless Skills v0.1
 
-A player-only training layer beyond Elite for Starsector 0.98a. Restart after installing the updated JAR.
+A player-only training layer beyond Elite for Starsector 0.98a-RC8. Restart after installing the updated JAR.
 
 [Illustrated list of all fourteen Peerless effects](docs/assets/peerless_effects_2x.png)
 
