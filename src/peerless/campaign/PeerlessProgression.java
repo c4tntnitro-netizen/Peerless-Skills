@@ -48,6 +48,8 @@ public final class PeerlessProgression {
         if (memory.getBoolean("$gaATG_missionCompleted")) PeerlessSkills.awardOnce(GALATIA);
         if ("COMPLETED".equals(memory.getString("$shipTrophyGanEdenQuestStage")))
             PeerlessSkills.awardOnce("$ship_trophy_room_peerless_isa_v1");
+        if (memory.getBoolean("$chief_navigator_menelaus_final_debrief_complete_v1"))
+            PeerlessSkills.awardOnce("$chief_navigator_domain_epic_v1");
         var settings = ProgressionSettings.read();
         if (NativeLevelProgress.configure(settings.enabled())) rebase(Global.getSettings().getLevelupPlugin());
         if (!settings.enabled()) return;

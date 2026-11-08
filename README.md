@@ -16,7 +16,7 @@ Use **Intel > Contacts > [your character] - Peerless training**, then select **P
 
 The introduction appears once per training session. Next/Previous and Back only change the available options. Skill options, effect descriptions and purchase options use the skill's category color: Combat red, Technology blue and Industry yellow. Successful training shows the updated point balance and plays Starsector's character level-up sound.
 
-By default, completing the Galatia questline, Hall of Triumph's main quest, and SoS's main story (Menelaus's final Labor debrief) each grants one Peerless point, once per campaign. Already-completed Galatia campaigns receive their point when loaded. Isa and Sinni no longer offer training; use your own contact. Menelaus's legacy post-title route also remains available.
+By default, completing the Galatia questline, Hall of Triumph's main quest, and SoS's main story (Menelaus's final Labor debrief) each grants one Peerless point, once per campaign. Peerless detects completion of all three questlines itself, including existing completed saves; story mods do not need to call Peerless. Isa and Sinni no longer offer training; use your own contact. Menelaus's legacy post-title route also remains available.
 
 Each newly awarded point produces one clickable campaign notification with your current unspent total. It waits until other screens close, then clicking it opens the training menu. Duplicate reward checks, spending and refunds do not produce new-point notices.
 

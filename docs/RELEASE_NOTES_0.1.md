@@ -17,3 +17,4 @@ Install the ZIP in your mods folder and restart Starsector. Replace the older Pe
 Validation: all fifteen regression suites pass. Phase Anchor and Combat Endurance triggering together has also been confirmed in live combat. Cross-mod coverage is partial; the automated checks do not establish compatibility with every installed mod.
 
 November 8 hotfix: A Borrowed Name now grants its Peerless point from the completed quest flag, including existing saves. The permanent reward receipt prevents duplicate grants and the normal award popup is queued.
+Peerless also detects the SoS final debrief itself. All three quest rewards are checked inside Peerless; existing story callbacks share receipts and cannot duplicate points.

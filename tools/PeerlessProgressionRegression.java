@@ -78,7 +78,9 @@ public final class PeerlessProgressionRegression {
         memory.set("$shipTrophyGanEdenQuestStage","COMPLETED");PeerlessProgression.advance();PeerlessProgression.advance();
         check(PeerlessSkills.getPoints()==2 && memory.getBoolean(PeerlessRewardsRegression.ISA),"Completed Borrowed Name backfills exactly once");
         check(!PeerlessSkills.awardOnce(PeerlessRewardsRegression.ISA),"Story integration cannot duplicate backfill");
-        PeerlessSkills.awardOnce(PeerlessRewardsRegression.SINNI);
+        memory.set("$chief_navigator_menelaus_final_debrief_complete_v1",true);
+        PeerlessProgression.advance();PeerlessProgression.advance();
+        check(!PeerlessSkills.awardOnce(PeerlessRewardsRegression.SINNI),"SoS legacy callback cannot duplicate detected reward");
         check(PeerlessSkills.getPoints()==3,"Galatia, HoT and SoS independently grant one default point");
         if (args.length > 0 && "rewards-only".equals(args[0])) {
             System.out.println("PASS: completion flags grant Galatia and Borrowed Name once; unfinished quests and duplicate integrations grant nothing.");
