@@ -73,8 +73,17 @@ public final class PeerlessProgressionRegression {
         stats.addXP(8000,null,false,false,true);PeerlessProgression.advance();
         check(PeerlessSkills.getPoints()==0,"No XP rewards by default");
         memory.set("$gaATG_missionCompleted",true);PeerlessProgression.advance();PeerlessProgression.advance();
-        PeerlessSkills.awardOnce(PeerlessRewardsRegression.ISA);PeerlessSkills.awardOnce(PeerlessRewardsRegression.SINNI);
+        memory.set("$shipTrophyGanEdenQuestStage","SPACE_ELEVATOR");PeerlessProgression.advance();
+        check(PeerlessSkills.getPoints()==1,"Unfinished Borrowed Name grants nothing");
+        memory.set("$shipTrophyGanEdenQuestStage","COMPLETED");PeerlessProgression.advance();PeerlessProgression.advance();
+        check(PeerlessSkills.getPoints()==2 && memory.getBoolean(PeerlessRewardsRegression.ISA),"Completed Borrowed Name backfills exactly once");
+        check(!PeerlessSkills.awardOnce(PeerlessRewardsRegression.ISA),"Story integration cannot duplicate backfill");
+        PeerlessSkills.awardOnce(PeerlessRewardsRegression.SINNI);
         check(PeerlessSkills.getPoints()==3,"Galatia, HoT and SoS independently grant one default point");
+        if (args.length > 0 && "rewards-only".equals(args[0])) {
+            System.out.println("PASS: completion flags grant Galatia and Borrowed Name once; unfinished quests and duplicate integrations grant nothing.");
+            return;
+        }
         memory.clear();settings.put("peerless_postCapProgression",true);PeerlessProgression.advance();
         check(ScriptStore.Object(LevelupPlugin.class).get(0)!=levels,"Optional observer delegates the selected plugin");
         int storyPointsBefore=stats.getStoryPoints();int skillPointsBefore=stats.getPoints();

@@ -46,6 +46,8 @@ public final class PeerlessProgression {
         if (Global.getSector() == null || Global.getSector().getPlayerStats() == null) return;
         var memory = Global.getSector().getMemoryWithoutUpdate();
         if (memory.getBoolean("$gaATG_missionCompleted")) PeerlessSkills.awardOnce(GALATIA);
+        if ("COMPLETED".equals(memory.getString("$shipTrophyGanEdenQuestStage")))
+            PeerlessSkills.awardOnce("$ship_trophy_room_peerless_isa_v1");
         var settings = ProgressionSettings.read();
         if (NativeLevelProgress.configure(settings.enabled())) rebase(Global.getSettings().getLevelupPlugin());
         if (!settings.enabled()) return;

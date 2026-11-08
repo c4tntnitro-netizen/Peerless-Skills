@@ -15,3 +15,5 @@ Fourteen player-only upgrades beyond Elite for Starsector 0.98a-RC8, with option
 Install the ZIP in your mods folder and restart Starsector. Replace the older Peerless Skills folder rather than keeping a second copy. Console Commands, Second in Command and LunaLib are optional for players. HoT and SoS quest rewards require compatible story-mod integrations.
 
 Validation: all fifteen regression suites pass. Phase Anchor and Combat Endurance triggering together has also been confirmed in live combat. Cross-mod coverage is partial; the automated checks do not establish compatibility with every installed mod.
+
+November 8 hotfix: A Borrowed Name now grants its Peerless point from the completed quest flag, including existing saves. The permanent reward receipt prevents duplicate grants and the normal award popup is queued.
