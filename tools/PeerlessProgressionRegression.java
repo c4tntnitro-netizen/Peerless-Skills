@@ -2,204 +2,248 @@ package peerless.skills;
 
 import com.fs.starfarer.api.*;
 import com.fs.starfarer.api.campaign.*;
-import com.fs.starfarer.api.characters.PersonAPI;
+import com.fs.starfarer.api.campaign.rules.MemoryAPI;
+import com.fs.starfarer.api.characters.*;
 import com.fs.starfarer.api.plugins.LevelupPlugin;
-import com.fs.starfarer.campaign.CampaignEngine;
-import com.fs.starfarer.campaign.CharacterStats;
-import com.fs.starfarer.campaign.rules.Memory;
-import com.fs.starfarer.loading.scripts.ScriptStore;
-import com.fs.util.container.repo.ObjectRepository;
-import java.lang.reflect.*;
 import java.util.*;
-import org.json.JSONObject;
-import org.lazywizard.lazylib.JSONUtils.CommonDataJSONObject;
 import lunalib.backend.ui.settings.LunaSettingsLoader;
 import lunalib.lunaSettings.LunaSettings;
+import org.lazywizard.lazylib.JSONUtils.CommonDataJSONObject;
 import org.lazywizard.console.BaseCommand.CommandContext;
 import org.lazywizard.console.BaseCommand.CommandResult;
 import peerless.api.PeerlessSkills;
 import peerless.campaign.*;
 import static peerless.skills.PeerlessFixture.*;
 
-/** Runs actual native CharacterStats.addXP/levelUpIfNeeded, including multiple wraps within one award. */
+/** Public-API observations only: no native XP implementation or script registry in this test. */
 public final class PeerlessProgressionRegression {
+    static final String BANK = "$peerless_skills_postcap_levels_v1";
+    static final String SEQUENCE = "$peerless_skills_postcap_awards_v1";
+    static final String BALANCE = "$peerless_skills_points_v1";
     static final class Levels implements LevelupPlugin {
-        int cap=15;long cycle=400;
-        public long getXPForLevel(int level){return level<=cap?(level-1)*100L:(cap-1)*100L+cycle;}
-        public int getMaxLevel(){return cap;}
-        public int getPointsAtLevel(int level){return 1;}
-        public int getStoryPointsPerLevel(){return 4;}
-        public int getBonusXPUseMultAtMaxLevel(){return 1;}
-    }
-    static final class Engine extends CampaignEngine {
-        CharacterStats stats;
-        @Override public CharacterStats getPlayerStats(){return stats;}
-        @Override public PersonAPI getPlayerPerson(){return Global.getSector().getPlayerPerson();}
-    }
-    public static void main(String[] args)throws Exception {
-        var memory=new Memory();var levels=new Levels();boolean[] luna={false};
-        var config=new JSONObject().put("baseMaxAdmins",2).put("baseMaxOutposts",4).put("startingCommandPoints",5).put("baseNumOfficers",8);
-        for(Field field:Class.forName("com.fs.starfarer.settings.StarfarerSettings").getDeclaredFields())
-            if(field.getType()==JSONObject.class && Modifier.isStatic(field.getModifiers())){field.setAccessible(true);field.set(null,config);}
-        ObjectRepository repository=null;
-        for(Field field:ScriptStore.class.getDeclaredFields())if(field.getType()==ObjectRepository.class){field.setAccessible(true);repository=(ObjectRepository)field.get(null);}
-        repository.add(levels);
-        Global.setSettings(mock(SettingsAPI.class,(name,a)->switch(name){
-            case "getModManager" -> mock(ModManagerAPI.class,(nn,aa)->nn.equals("isModEnabled") && aa[0].equals("lunalib")?luna[0]:null);
-            case "getLevelupPlugin" -> ScriptStore.Object(LevelupPlugin.class).get(0);
-            case "getFloat" -> switch((String)a[0]) {
-                case "playerMaxLevel" -> 15f;case "storyPointsPerLevel" -> 4f;default -> 1f;
-            };
-            case "getInt" -> 1;case "getColor" -> java.awt.Color.WHITE;
-            default -> null;
-        }));
-        CharacterStats stats=new CharacterStats();stats.setSkipRefresh(true);stats.setLevel(15);stats.setXP(levels.getXPForLevel(15));
-        Field uf=sun.misc.Unsafe.class.getDeclaredField("theUnsafe");uf.setAccessible(true);var unsafe=(sun.misc.Unsafe)uf.get(null);
-        Engine engine=(Engine)unsafe.allocateInstance(Engine.class);engine.stats=stats;
-        Field singleton=CampaignEngine.class.getDeclaredField("instance");singleton.setAccessible(true);singleton.set(null,engine);
-        Global.setSector(mock(SectorAPI.class,(name,a)->switch(name){
-            case "getPlayerStats" -> engine.stats;case "getMemoryWithoutUpdate" -> memory;
-            case "getPlayerPerson" -> mock(PersonAPI.class,(nn,aa)->nn.equals("getStats")?engine.stats:null);
-            case "getCampaignUI" -> mock(CampaignUIAPI.class,(nn,aa)->null);
-            case "getPlayerFaction" -> mock(FactionAPI.class,(nn,aa)->nn.contains("Color")?java.awt.Color.WHITE:null);
-            default -> null;
-        }));
-        check(!ProgressionSettings.read().enabled() && ProgressionSettings.read().levelsPerPoint()==10,"Luna absent defaults to quest-only with ratio ten");
-        var settings=new CommonDataJSONObject("peerless-regression-unused.json");
-        settings.put("peerless_postCapProgression",false);settings.put("peerless_levelsPerPoint",10);
-        LunaSettingsLoader.INSTANCE.setHasLoaded(true);LunaSettingsLoader.getSettings().put("peerless_skills",settings);
-        luna[0]=true;PeerlessProgression.install();
-        check(ScriptStore.Object(LevelupPlugin.class).get(0)==levels,"Disabled progression leaves the selected level plugin intact");
-        stats.addXP(8000,null,false,false,true);PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==0,"No XP rewards by default");
-        memory.set("$gaATG_missionCompleted",true);PeerlessProgression.advance();PeerlessProgression.advance();
-        memory.set("$shipTrophyGanEdenQuestStage","SPACE_ELEVATOR");PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==1,"Unfinished Borrowed Name grants nothing");
-        memory.set("$shipTrophyGanEdenQuestStage","COMPLETED");PeerlessProgression.advance();PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==2 && memory.getBoolean(PeerlessRewardsRegression.ISA),"Completed Borrowed Name backfills exactly once");
-        check(!PeerlessSkills.awardOnce(PeerlessRewardsRegression.ISA),"Story integration cannot duplicate backfill");
-        memory.set("$chief_navigator_menelaus_final_debrief_complete_v1",true);
-        PeerlessProgression.advance();PeerlessProgression.advance();
-        check(!PeerlessSkills.awardOnce(PeerlessRewardsRegression.SINNI),"SoS legacy callback cannot duplicate detected reward");
-        check(PeerlessSkills.getPoints()==3,"Galatia, HoT and SoS independently grant one default point");
-        if (args.length > 0 && "rewards-only".equals(args[0])) {
-            System.out.println("PASS: completion flags grant Galatia and Borrowed Name once; unfinished quests and duplicate integrations grant nothing.");
-            return;
+        int cap = 15;
+        long cycle = 400, aboveStep;
+        public long getXPForLevel(int n) {
+            if (n < 1) throw new AssertionError("Invalid level query");
+            return n <= cap ? (n - 1) * 100L : (cap - 1) * 100L + cycle + (n - cap - 1) * aboveStep;
         }
-        memory.clear();settings.put("peerless_postCapProgression",true);PeerlessProgression.advance();
-        check(ScriptStore.Object(LevelupPlugin.class).get(0)!=levels,"Optional observer delegates the selected plugin");
-        int storyPointsBefore=stats.getStoryPoints();int skillPointsBefore=stats.getPoints();
-        stats.addXP(3960,null,false,false,true);PeerlessProgression.advance();check(PeerlessSkills.getPoints()==0,"No reward before ten full XP bars");
-        stats.addXP(40,null,false,false,true);PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==1 && stats.getXP()==levels.getXPForLevel(15),"Exact tenth bar awards once with native XP wrapping intact");
-        check(stats.getStoryPoints()==storyPointsBefore+40 && stats.getPoints()==skillPointsBefore,"Vanilla story-point gains and ordinary skill points are unchanged");
-        // Several identical awards before any campaign frame must each be counted.
-        stats.addXP(4000,null,false,false,true);stats.addXP(4000,null,false,false,true);
-        PeerlessProgression.advance();PeerlessProgression.advance();PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==3,"Repeated same-size awards in one frame are not lost or duplicated");
-        stats.addXP(12000,null,false,false,true);
-        for(int i=0;i<4;i++)PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==6,"Large multi-wrap XP award pays every earned point");
-        for(int i=0;i<20;i++)Global.getSettings().getLevelupPlugin().getXPForLevel(16);
-        PeerlessProgression.advance();check(PeerlessSkills.getPoints()==6,"Tooltip XP queries cannot create points");
-        stats.addStoryPoints(100);PeerlessProgression.advance();check(PeerlessSkills.getPoints()==6,"Direct story-point grants are not XP");
-        settings.put("peerless_levelsPerPoint",2);stats.addXP(600,null,false,false,true);PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==6,"Partial progress remains banked");
-        settings.put("peerless_postCapProgression",false);PeerlessProgression.advance();
-        check(ScriptStore.Object(LevelupPlugin.class).get(0)==levels,"Disabling restores the original plugin");
-        stats.addXP(8000,null,false,false,true);PeerlessProgression.advance();
-        settings.put("peerless_postCapProgression",true);PeerlessProgression.advance();
-        stats.addXP(200,null,false,false,true);PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==7,"Toggle preserves prior progress while excluding disabled XP");
-        PeerlessProgression.install();PeerlessProgression.advance();check(PeerlessSkills.getPoints()==7,"Reload does not repay earlier progression");
-        levels.cap=25;levels.cycle=800;stats.setLevel(25);stats.setXP(levels.getXPForLevel(25));
-        PeerlessProgression.install();stats.addXP(1600,null,false,false,true);PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==8,"Changed cap and XP requirements use the delegated level plugin");
-        check(stats.getLevel()==25 && stats.getXP()==levels.getXPForLevel(25),"Native level cap and XP bar preserved");
-        memory.clear();levels.cap=15;levels.cycle=400;stats.setLevel(14);stats.setXP(1300);
-        settings.put("peerless_levelsPerPoint",1);PeerlessProgression.install();
-        stats.addXP(300,null,false,false,true);PeerlessProgression.advance();
-        check(stats.getLevel()==15 && PeerlessSkills.getPoints()==0,"XP used to reach the cap is excluded");
-        stats.addXP(200,null,false,false,true);PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==1,"Only XP beyond the cap fills Peerless progression");
-        settings.put("peerless_levelsPerPoint",0);check(ProgressionSettings.read().levelsPerPoint()==1,"Invalid ratio is clamped");
-        settings.put("peerless_postCapProgression",false);PeerlessProgression.advance();
-        // Settings/console dialogs can award XP before the next campaign-script frame.
-        memory.clear();PeerlessProgression.install();
-        settings.put("peerless_postCapProgression",true);
-        LunaSettings.reportSettingsChanged("peerless_skills");
-        stats.addXP(800,null,false,false,true);
-        String diagnostic=PeerlessProgression.diagnostics();long xpBefore=stats.getXP();
-        check(diagnostic.contains("XP tracker: attached") && diagnostic.contains("Banked progress: 2.0000 / 1")
-                && diagnostic.contains("XP per bar: 400"),"Diagnostics expose actual pending progress");
-        var command=new peerless.console.APSProgress();
-        check(command.runCommand("",CommandContext.COMBAT_MISSION)==CommandResult.WRONG_CONTEXT,"Progress command is campaign-only");
-        check(command.runCommand("extra",CommandContext.CAMPAIGN_MAP)==CommandResult.BAD_SYNTAX,"Progress command rejects arguments");
-        check(command.runCommand("",CommandContext.CAMPAIGN_MAP)==CommandResult.SUCCESS,"Progress command runs against native stats and memory");
-        check(diagnostic.equals(PeerlessProgression.diagnostics()) && stats.getXP()==xpBefore && PeerlessSkills.getPoints()==0,
-                "Diagnostics do not alter XP, baseline, pending rewards or point balance");
-        PeerlessProgression.advance();PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==2,"Enabling in Luna counts XP awarded before the next campaign frame");
-        settings.put("peerless_postCapProgression",false);LunaSettings.reportSettingsChanged("peerless_skills");
-        check(ScriptStore.Object(LevelupPlugin.class).get(0)==levels,"Luna disable detaches before another frame");
-        stats.addXP(800,null,false,false,true);
-        settings.put("peerless_postCapProgression",true);LunaSettings.reportSettingsChanged("another_mod");
-        check(ScriptStore.Object(LevelupPlugin.class).get(0)==levels,"Other mods' settings events do not reconfigure progression");
-        LunaSettings.reportSettingsChanged("peerless_skills");
-        stats.addXP(100,null,false,false,true);
-        settings.put("peerless_levelsPerPoint",2);LunaSettings.reportSettingsChanged("peerless_skills");
-        stats.addXP(700,null,false,false,true);PeerlessProgression.advance();PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==3,"Immediate toggles exclude disabled XP and ratio changes retain banked progress");
-        int listenerCount=LunaSettings.getListeners$LunaLib().size();
-        PeerlessProgression.install();PeerlessProgression.install();
-        check(LunaSettings.getListeners$LunaLib().size()==listenerCount,"Reload does not duplicate the Luna listener");
-        settings.put("peerless_postCapProgression",false);LunaSettings.reportSettingsChanged("peerless_skills");
-        overCapProgression(engine,settings,memory);
-        settings.put("peerless_postCapProgression",false);LunaSettings.reportSettingsChanged("peerless_skills");
-        Global.setSector(null);LunaSettings.reportSettingsChanged("peerless_skills");
-        check(command.runCommand("",CommandContext.CAMPAIGN_MAP)==CommandResult.ERROR,"No campaign is handled safely");
-        System.out.println("PASS: Luna defaults/toggle/ratio, three quest rewards, native stats/memory, actual XP wraps, large awards, direct-SP exclusion, reload, modified caps, immediate settings events and read-only progress command.");
+        public int getMaxLevel() { return cap; }
+        public int getPointsAtLevel(int n) { return 1; }
+        public int getStoryPointsPerLevel() { return 4; }
+        public int getBonusXPUseMultAtMaxLevel() { return 1; }
+    }
+    static final class Harness {
+        final Map<String,Object> saved = new HashMap<>();
+        final PeerlessFixture fixture = new PeerlessFixture();
+        final CommonDataJSONObject config = new CommonDataJSONObject("peerless-polling-test-unused.json");
+        final CampaignEffects script = new CampaignEffects();
+        Levels levels = new Levels();
+        long xp = 1400;
+        int level = 15, storyPoints = 8, writes;
+        boolean luna = true;
+        final MemoryAPI memory = mock(MemoryAPI.class, (n,a) -> switch(n) {
+            case "get" -> saved.get(a[0]);
+            case "getBoolean" -> Boolean.TRUE.equals(saved.get(a[0]));
+            case "getString" -> saved.get(a[0]);
+            case "set" -> { writes++; saved.put((String)a[0], a[1]); yield null; }
+            case "unset" -> { writes++; saved.remove(a[0]); yield null; }
+            default -> null;
+        });
+        final MutableCharacterStatsAPI stats = mock(MutableCharacterStatsAPI.class, (n,a) -> {
+            if (n.startsWith("set") || n.startsWith("add") || n.startsWith("spend") || n.startsWith("levelUp"))
+                throw new AssertionError("Tracking must not mutate character stats: " + n);
+            return switch(n) {
+                case "getXP" -> xp;
+                case "getLevel" -> level;
+                case "getStoryPoints" -> storyPoints;
+                case "getPoints" -> 2;
+                case "getDynamic" -> fixture.dynamic;
+                default -> null;
+            };
+        });
+        Harness(boolean enabled, int ratio) {
+            setting("peerless_postCapProgression", enabled);
+            setting("peerless_levelsPerPoint", ratio);
+            LunaSettingsLoader.INSTANCE.setHasLoaded(true);
+            LunaSettingsLoader.getSettings().put("peerless_skills", config);
+            Global.setSettings(mock(SettingsAPI.class, (n,a) -> switch(n) {
+                case "getLevelupPlugin" -> levels;
+                case "getModManager" -> mock(ModManagerAPI.class, (nn,aa) ->
+                        nn.equals("isModEnabled") && aa[0].equals("lunalib") && luna);
+                case "getColor" -> java.awt.Color.WHITE;
+                default -> null;
+            }));
+            var person = mock(PersonAPI.class, (n,a) -> n.equals("getStats") ? stats : null);
+            var fleet = mock(CampaignFleetAPI.class, (n,a) -> n.equals("getFleetData")
+                    ? mock(FleetDataAPI.class, (nn,aa) -> nn.equals("getMembersListCopy") ? List.of() : null) : null);
+            Global.setSector(mock(SectorAPI.class, (n,a) -> switch(n) {
+                case "getMemoryWithoutUpdate" -> memory;
+                case "getPlayerStats" -> stats;
+                case "getPlayerPerson" -> person;
+                case "getPlayerFleet" -> fleet;
+                default -> null;
+            }));
+            PeerlessProgression.install();
+            check(script.runWhilePaused(), "Campaign sampling remains enabled while paused");
+        }
+        void frame() { script.advance(0f); }
+        void frame(long value) { xp = value; frame(); }
+        void setting(String key, Object value) {
+            try { config.put(key, value); }
+            catch (org.json.JSONException ex) { throw new AssertionError(ex); }
+        }
+        void enable(boolean value) {
+            setting("peerless_postCapProgression", value);
+            LunaSettings.reportSettingsChanged("peerless_skills");
+        }
+        void ratio(int value) {
+            setting("peerless_levelsPerPoint", value);
+            LunaSettings.reportSettingsChanged("peerless_skills");
+        }
+        double bank() { return ((Number)saved.getOrDefault(BANK, 0d)).doubleValue(); }
+        int points() { return PeerlessSkills.getPoints(); }
+        void bankIs(double value, String why) { check(Math.abs(bank() - value) < 1e-8, why + ": " + bank()); }
     }
 
-    static CharacterStats overCapStats() {
-        var stats=new CharacterStats();stats.setSkipRefresh(true);
-        stats.setLevel(22);stats.setXP(19572481L);
-        return stats;
+    public static void main(String[] args) {
+        defaultsAndQuests();
+        visibleProgressAndLimits();
+        togglesAndReload();
+        capAndCurveChanges();
+        invalidAndMissingState();
+        diagnosticsAndMigration();
+        System.out.println("PASS: public-API campaign-frame XP polling, rollovers and known losses, quest rewards, toggles, reload/migration, cap changes, invalid ranges, diagnostics and unchanged native stats/plugin.");
     }
-    static void overCapProgression(Engine engine,JSONObject settings,Memory memory)throws Exception {
-        // Exact diagnostic state from the live report; compile the installed game's authored
-        // level plugin into the test output, rather than substituting a fake XP curve.
-        LevelupPlugin vanilla=new data.scripts.plugins.LevelupPluginImpl();
-        ScriptStore.Object(LevelupPlugin.class).set(0,vanilla);
-        check(vanilla.getMaxLevel()==15 && vanilla.getXPForLevel(16)-vanilla.getXPForLevel(15)==4000000L,
-                "Reported cap and native XP-bar requirement");
-        long[] grants={10000000L,10000000L,25000L,75000L,3900000L};
-        engine.stats=overCapStats();
-        for(long grant:grants)engine.stats.addXP(grant,null,false,false,true);
-        long controlXP=engine.stats.getXP();int controlSP=engine.stats.getStoryPoints();
-        memory.clear();engine.stats=overCapStats();
-        settings.put("peerless_levelsPerPoint",1);settings.put("peerless_postCapProgression",true);
+    static void defaultsAndQuests() {
+        Harness h = new Harness(false, 10);
+        h.luna = false;
+        check(!ProgressionSettings.read().enabled() && ProgressionSettings.read().levelsPerPoint() == 10, "Defaults without Luna");
+        h.frame(1700);
+        h.saved.put("$gaATG_missionCompleted", true);
+        h.saved.put("$shipTrophyGanEdenQuestStage", "SPACE_ELEVATOR");
+        h.frame(); h.frame();
+        check(h.points() == 1, "Galatia once; unfinished HoT grants nothing");
+        h.saved.put("$shipTrophyGanEdenQuestStage", "COMPLETED");
+        h.saved.put("$chief_navigator_menelaus_final_debrief_complete_v1", true);
+        h.frame(); h.frame();
+        check(h.points() == 3 && !PeerlessSkills.awardOnce("$ship_trophy_room_peerless_isa_v1")
+                && !PeerlessSkills.awardOnce("$chief_navigator_domain_epic_v1"), "All three quests once; old callbacks cannot duplicate rewards");
+        h.bankIs(0, "Disabled XP excluded");
+        check(Global.getSettings().getLevelupPlugin() == h.levels, "Selected plugin is never replaced");
+    }
+    static void visibleProgressAndLimits() {
+        Harness h = new Harness(true, 10);
+        h.frame(1500); h.bankIs(.25, "Visible increase");
+        h.frame(1750); h.bankIs(.875, "Another partial increase");
+        h.frame(1450); h.bankIs(1.125, "Observed rollover uses the public range");
+        int writes = h.writes;
+        for (int i = 0; i < 10000; i++) h.frame();
+        check(h.writes == writes && h.points() == 0, "Unchanged/paused frames do not write progress or award again");
+
+        h = new Harness(true, 10);
+        for (int i = 0; i < 40; i++) h.frame(1400 + ((i + 1) % 4) * 100);
+        check(h.points() == 1 && h.saved.get(PeerlessPointNotifications.PENDING).equals(1L), "Ten observed bars award one point and notification");
+        h.bankIs(0, "Paid bars deducted once");
+
+        h = new Harness(true, 10);
+        h.frame(1400); // One or many whole bars can leave exactly the same public XP value.
+        h.bankIs(0, "Unobservable full cycles are not guessed");
+        h.frame(1500); h.bankIs(.25, "A multi-bar grant leaving +100 counts only that visible remainder");
+        h.storyPoints += 100; h.frame();
+        h.bankIs(.25, "Story-point grants are not treated as XP");
+
+        h = new Harness(true, 100);
+        h.frame(5400); h.bankIs(10, "An unnormalized XP value is fully visible");
+        h.frame(1400); h.bankIs(10, "Later normalization cannot double count it");
+        h.frame(1500); h.bankIs(10.25, "Sampling resumes after normalization");
+    }
+    static void togglesAndReload() {
+        Harness h = new Harness(false, 10);
+        h.xp = 1550; h.enable(true);
+        h.frame(1650); h.bankIs(.25, "Enable excludes old XP and captures XP before the next frame");
+        h.xp = 1750; h.ratio(2); h.bankIs(.5, "Ratio-only event retains pending visible XP");
+        h.xp = 1790; h.enable(false); h.bankIs(.6, "Disabling samples the final enabled gain");
+        h.frame(1470); h.xp = 1600; h.enable(true);
+        h.frame(1640); h.bankIs(.7, "Disabled gains excluded; prior bank retained");
+        int listeners = LunaSettings.getListeners$LunaLib().size();
+        var saved = new HashMap<>(h.saved);
+        h = new Harness(true, 2);
+        h.saved.putAll(saved); h.xp = 1640;
+        PeerlessProgression.install(); PeerlessProgression.install(); h.frame();
+        h.bankIs(.7, "Reload preserves partial progress without replaying XP");
+        check(LunaSettings.getListeners$LunaLib().size() == listeners, "Reload deduplicates settings listener");
+        h.ratio(1); h.frame(1760);
+        check(h.points() == 1, "Saved progress contributes to next payout");
+        h.bankIs(0, "Reloaded progress pays once");
+        h.setting("peerless_postCapProgression", false); h.frame(1780);
+        h.setting("peerless_postCapProgression", true); h.frame(1600);
+        h.frame(1700); h.bankIs(.25, "Frame fallback rebases unreported toggles");
+    }
+    static void capAndCurveChanges() {
+        Harness h = new Harness(true, 100);
+        h.frame(1550);
+        h.levels.cap = 25; h.levels.cycle = 800; h.level = 25;
+        h.frame(2400); h.bankIs(.375, "Changed cap rebases rather than looking like a rollover");
+        h.frame(2800); h.bankIs(.875, "Changed cap uses its public XP requirement");
+        h.levels.cycle = 1000; h.frame(2900); h.bankIs(.875, "Curve-only change rebases");
+        h.frame(3000); h.bankIs(.975, "New curve used on later gains");
+        h.levels = new Levels(); h.levels.cap = 25; h.levels.cycle = 1000;
+        h.frame(3100); h.bankIs(.975, "Replacement plugin rebases without mutating either plugin");
+        h.frame(3200); h.bankIs(1.075, "Replacement plugin remains usable");
+
+        h = new Harness(true, 1);
+        h.level = 14; h.xp = 1300; PeerlessProgression.install();
+        h.frame(1350); h.bankIs(0, "Below-cap XP excluded");
+        h.level = 15; h.frame(1500); h.bankIs(.25, "Only visible excess after reaching cap counts");
+        h.frame(1700); h.frame(1400);
+        check(h.points() == 1, "Post-cap excess plus subsequent XP fills one bar");
+
+        h = new Harness(true, 100);
+        h.level = 22; h.xp = 1750; PeerlessProgression.install();
+        h.frame(1780); h.bankIs(.075, "Above a lowered cap, visible gains count");
+        h.frame(1720); h.bankIs(.075, "A flat above-cap curve supplies no rollover size; do not invent one");
+        h.frame(1750); h.bankIs(.15, "Resume after unexplained drop");
+        h.levels.aboveStep = 100; h.frame(2450);
+        h.frame(2490); h.frame(2400); h.bankIs(.275, "Known above-cap rollover counts using its range and the cap's reward size");
+    }
+    static void invalidAndMissingState() {
+        Harness h = new Harness(true, 1);
+        h.levels.cycle = 0; h.frame(1500); h.frame(1600);
+        h.bankIs(0, "Zero-width curve cannot divide by zero");
+        h.levels.cycle = -1; h.frame(1700); h.bankIs(0, "Descending curve ignored");
+        h.levels.cycle = 400; h.frame(1400); h.frame(1500); h.bankIs(.25, "Recovery rebases first");
+        h.levels.cap = Integer.MAX_VALUE; h.frame(); h.bankIs(.25, "Cap-plus-one overflow avoided");
+        h.levels.cap = 15; h.frame(1500);
+        h.frame(-1); h.frame(1400); h.bankIs(.25, "Invalid XP resets baseline without inventing earnings");
+        h.levels = null; h.frame();
+        check(PeerlessProgression.diagnostics().contains("waiting for a valid XP requirement"), "Missing plugin handled");
+        h = new Harness(true, 100);
+        h.level = Integer.MAX_VALUE; h.xp = 1500; PeerlessProgression.install();
+        h.frame(1600); h.frame(1400); h.bankIs(.25, "Actual-level overflow cannot fabricate a cap-sized rollover");
+        Global.setSector(null);
+        PeerlessProgression.install(); PeerlessProgression.advance();
+        LunaSettings.reportSettingsChanged("peerless_skills");
+    }
+    static void diagnosticsAndMigration() {
+        Harness h = new Harness(true, 1);
+        h.saved.put(BANK, 2.5d); h.saved.put(SEQUENCE, 5L); h.saved.put(BALANCE, 2);
+        h.saved.put("$peerless_skills_postcap_award_v1_5", true);
+        h.saved.put("$peerless_skills_postcap_last_xp_v1", 99999999L);
         PeerlessProgression.install();
-        long earned=0L;
-        for(long grant:grants) {
-            engine.stats.addXP(grant,null,false,false,true);earned+=grant;
-            Object recorded=memory.get("$peerless_skills_postcap_levels_v1");
-            check(recorded instanceof Number && Math.abs(((Number)recorded).doubleValue()-earned/4000000d)<1e-9,
-                    "Level 22 / cap 15 records every native XP grant before a campaign frame: "+earned);
-            check(((Number)memory.get("$peerless_skills_postcap_last_xp_v1")).longValue()==engine.stats.getXP(),
-                    "Recorded baseline matches native normalization above the cap");
-        }
-        for(int i=0;i<7;i++)PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==6,"24 million XP above the lowered cap awards six points at ratio one");
-        check(engine.stats.getXP()==controlXP && engine.stats.getStoryPoints()==controlSP
-                && engine.stats.getLevel()==22 && engine.stats.getPoints()==0,
-                "Over-cap tracking preserves native XP, story points, character level and skill points");
-        for(int i=0;i<20;i++) {
-            Global.getSettings().getLevelupPlugin().getXPForLevel(16);
-            Global.getSettings().getLevelupPlugin().getXPForLevel(23);
-        }
-        PeerlessProgression.install();PeerlessProgression.advance();
-        check(PeerlessSkills.getPoints()==6,"Over-cap tooltip queries and reload do not duplicate points");
-        System.out.println("PASS: live level-22/cap-15/19572481-XP reproducer, installed vanilla XP curve, repeated grants, exact wrapped baseline and unchanged native rewards.");
+        h.xp = 1500;
+        var before = new HashMap<>(h.saved);
+        String text = PeerlessProgression.diagnostics();
+        check(text.contains("public API, every campaign frame") && text.contains("XP per bar: 400"), "Diagnostics describe polling");
+        check(h.saved.equals(before), "Diagnostics do not sample pending XP or mutate saves");
+        h.frame(); check(h.points() == 3, "Old bank pays at most one point per frame");
+        h.frame(); h.frame();
+        check(h.points() == 4 && h.saved.get(SEQUENCE).equals(7L), "Legacy receipts and award sequence continue");
+        h.bankIs(.75, "Migration retains bank and adds only newly observed XP");
+        var command = new peerless.console.APSProgress();
+        check(command.runCommand("", CommandContext.COMBAT_MISSION) == CommandResult.WRONG_CONTEXT, "Campaign-only command");
+        check(command.runCommand("extra", CommandContext.CAMPAIGN_MAP) == CommandResult.BAD_SYNTAX, "Command syntax");
+        check(command.runCommand("", CommandContext.CAMPAIGN_MAP) == CommandResult.SUCCESS, "Progress command remains usable");
+        Global.setSector(null);
+        check(command.runCommand("", CommandContext.CAMPAIGN_MAP) == CommandResult.ERROR, "No campaign command guard");
     }
 }

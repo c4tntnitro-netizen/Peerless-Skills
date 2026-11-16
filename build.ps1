@@ -1,7 +1,8 @@
+param([string]$GameRoot = (Split-Path (Split-Path $PSScriptRoot)))
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
-$mods = Split-Path $root
-$game = Split-Path $mods
+$game = $GameRoot
+$mods = Join-Path $game 'mods'
 $jdk = Join-Path $game 'jdk-23+7/bin'
 $out = Join-Path $root ('build/' + [guid]::NewGuid())
 $classes = Join-Path $out 'classes'

@@ -1,6 +1,8 @@
 package peerless.campaign;
 
 import com.fs.starfarer.api.Global;
+import com.fs.starfarer.api.campaign.SectorAPI;
+import com.fs.starfarer.api.characters.MutableCharacterStatsAPI;
 import com.fs.starfarer.api.plugins.LevelupPlugin;
 import peerless.api.PeerlessSkills;
 
@@ -11,36 +13,45 @@ public final class PeerlessProgression {
     private static final String SEQUENCE = "$peerless_skills_postcap_awards_v1";
     private static final String XP = "$peerless_skills_postcap_last_xp_v1";
     private static final String CAP = "$peerless_skills_postcap_last_cap_v1";
+    // Transient observations are rebased on load. Only earned progress and receipts persist.
+    private static Sample previous;
+
+    private record Sample(SectorAPI sector, MutableCharacterStatsAPI stats, LevelupPlugin plugin,
+                          boolean enabled, int level, int cap, long base, long cycle,
+                          long wrapBase, long wrapEnd, long xp) {}
 
     public static void install() {
         ProgressionSettings.listen();
-        var settings = ProgressionSettings.read();
-        NativeLevelProgress.configure(settings.enabled());
-        rebase(Global.getSettings().getLevelupPlugin());
+        sample(ProgressionSettings.read().enabled(), true);
     }
     static void settingsChanged() {
-        if (Global.getSector() == null || Global.getSector().getPlayerStats() == null) return;
-        // Settings and console dialogs can suspend campaign scripts. Attach/detach now,
-        // before another XP award can wrap; changing only the ratio must not rebase XP.
-        if (NativeLevelProgress.configure(ProgressionSettings.read().enabled()))
-            rebase(Global.getSettings().getLevelupPlugin());
+        boolean enabled = ProgressionSettings.read().enabled();
+        // Account for the last visible change before a toggle, then establish the new baseline.
+        // Ratio-only changes keep both banked progress and the current observation.
+        if (previous != null && previous.sector == Global.getSector() && previous.enabled != enabled)
+            sample(previous.enabled, false);
+        sample(enabled, false);
     }
-    /** Read-only console snapshot; never installs the hook, rebases XP or pays out points. */
+    /** Read-only console snapshot; never samples XP, rebases or pays out points. */
     public static String diagnostics() {
         var settings = ProgressionSettings.read();
         var stats = Global.getSector().getPlayerStats();
         var levels = Global.getSettings().getLevelupPlugin();
         int cap = levels == null ? -1 : levels.getMaxLevel();
-        long cycle = levels == null ? 0L : levels.getXPForLevel(cap + 1) - levels.getXPForLevel(cap);
+        long base = levels == null || cap < 1 || cap == Integer.MAX_VALUE ? -1L : levels.getXPForLevel(cap);
+        long end = base < 0 ? -1L : levels.getXPForLevel(cap + 1);
+        long cycle = end > base && base >= 0 ? end - base : 0L;
         return "Post-cap progression: " + (settings.enabled() ? "enabled" : "disabled")
-                + "\nXP tracker: " + (NativeLevelProgress.isInstalled(levels) ? "attached" : "not attached")
+                + "\nXP tracker: " + (!settings.enabled() ? "disabled"
+                        : cycle <= 0 ? "waiting for a valid XP requirement" : "public API, every campaign frame")
                 + "\nPlayer level: " + stats.getLevel() + "; cap: " + cap
                 + "\nXP: " + stats.getXP() + "; last recorded XP: " + number(XP, -1L)
                 + "; XP per bar: " + cycle
                 + "\nBanked progress: " + String.format(java.util.Locale.ROOT, "%.4f", number(PROGRESS, 0d).doubleValue())
                 + " / " + settings.levelsPerPoint() + " bars per Peerless point"
                 + "\nXP points awarded: " + number(SEQUENCE, 0L)
-                + "; unspent Peerless points: " + PeerlessSkills.getPoints();
+                + "; unspent Peerless points: " + PeerlessSkills.getPoints()
+                + "\nFull XP cycles completed between samples cannot be recovered.";
     }
     public static void advance() {
         if (Global.getSector() == null || Global.getSector().getPlayerStats() == null) return;
@@ -51,11 +62,8 @@ public final class PeerlessProgression {
         if (memory.getBoolean("$chief_navigator_menelaus_final_debrief_complete_v1"))
             PeerlessSkills.awardOnce("$chief_navigator_domain_epic_v1");
         var settings = ProgressionSettings.read();
-        if (NativeLevelProgress.configure(settings.enabled())) rebase(Global.getSettings().getLevelupPlugin());
-        if (!settings.enabled()) return;
-        var levels = Global.getSettings().getLevelupPlugin();
-        if (levels == null) return;
-        if (number(CAP, -1).intValue() != levels.getMaxLevel()) rebase(levels);
+        sample(settings.enabled(), false);
+        if (!settings.enabled() || previous == null || previous.cycle <= 0) return;
         double progress = number(PROGRESS, 0d).doubleValue();
         if (progress + 1e-9 < settings.levelsPerPoint()) return;
         long next = number(SEQUENCE, 0L).longValue() + 1L;
@@ -66,28 +74,53 @@ public final class PeerlessProgression {
             memory.set(PROGRESS, Math.max(0d, progress - settings.levelsPerPoint()));
         }
     }
-    static void rebase(LevelupPlugin levels) {
-        if (levels == null || Global.getSector() == null || Global.getSector().getPlayerStats() == null) return;
-        var memory = Global.getSector().getMemoryWithoutUpdate();
-        memory.set(XP, Global.getSector().getPlayerStats().getXP());
-        memory.set(CAP, levels.getMaxLevel());
-    }
-    static void observeBeforeXPWrap(LevelupPlugin levels) {
-        if (Global.getSector() == null || Global.getSector().getPlayerStats() == null) return;
-        var stats = Global.getSector().getPlayerStats();
+    /** Observe only public values; never replace a plugin or alter the player's stats.
+     *  A drop within a known XP range counts one visible rollover. Complete cycles hidden
+     *  between samples are indistinguishable from no gain and cannot be reconstructed. */
+    private static void sample(boolean enabled, boolean reset) {
+        var sector = Global.getSector();
+        var stats = sector == null ? null : sector.getPlayerStats();
+        var levels = Global.getSettings() == null ? null : Global.getSettings().getLevelupPlugin();
+        if (stats == null || levels == null) { previous = null; return; }
         int cap = levels.getMaxLevel();
-        if (stats.getLevel() < cap) return;
-        long base = levels.getXPForLevel(cap), end = levels.getXPForLevel(cap + 1);
-        if (base < 0 || end <= base) return;
-        long cycle = end - base, raw = stats.getXP();
-        var memory = Global.getSector().getMemoryWithoutUpdate();
-        if (number(CAP, -1).intValue() != cap || memory.get(XP) == null) { rebase(levels); return; }
-        long previous = number(XP, raw).longValue();
-        long gained = raw > Math.max(base, previous) ? raw - Math.max(base, previous) : 0L;
-        double progress = number(PROGRESS, 0d).doubleValue();
-        memory.set(PROGRESS, progress + (double)gained / cycle);
-        // Reward size follows the configured cap, while native XP wrapping follows the actual level.
-        memory.set(XP, NativeLevelProgress.xpAfterUpdate(levels, stats.getLevel(), raw));
+        int level = stats.getLevel();
+        long xp = stats.getXP();
+        long base = cap < 1 || cap == Integer.MAX_VALUE ? -1L : levels.getXPForLevel(cap);
+        long end = base < 0 ? -1L : levels.getXPForLevel(cap + 1);
+        long cycle = base >= 0 && end > base ? end - base : 0L;
+        long wrapBase = base, wrapEnd = end;
+        if (level > cap) {
+            wrapBase = level < Integer.MAX_VALUE ? levels.getXPForLevel(level) : -1L;
+            wrapEnd = level < Integer.MAX_VALUE ? levels.getXPForLevel(level + 1) : -1L;
+        }
+        Sample old = previous;
+        boolean sameCurve = old != null && old.sector == sector && old.stats == stats
+                && old.plugin == levels && old.cap == cap && old.base == base && old.cycle == cycle;
+        if (!reset && sameCurve && old.enabled == enabled && old.level == level
+                && old.wrapBase == wrapBase && old.wrapEnd == wrapEnd && old.xp == xp) return;
+
+        // No new snapshot or memory writes on an unchanged frame.
+        previous = new Sample(sector, stats, levels, enabled, level, cap, base, cycle, wrapBase, wrapEnd, xp);
+        var memory = sector.getMemoryWithoutUpdate();
+        memory.set(XP, xp);
+        memory.set(CAP, cap);
+        if (reset || !sameCurve || !enabled || !old.enabled || cycle <= 0 || level < cap || xp < 0) return;
+
+        long gained = 0L;
+        if (old.level < cap && level == cap) {
+            // Exclude XP needed to reach the cap; only the visible excess is eligible.
+            gained = Math.max(0L, xp - base);
+        } else if (old.level == level && old.wrapBase == wrapBase && old.wrapEnd == wrapEnd && old.xp >= 0) {
+            if (xp >= old.xp) {
+                gained = Math.max(0L, xp - Math.max(base, old.xp));
+            } else if (wrapBase >= 0 && wrapEnd > wrapBase
+                    && old.xp >= wrapBase && old.xp < wrapEnd && xp >= wrapBase && xp < wrapEnd) {
+                gained = (wrapEnd - old.xp) + (xp - wrapBase);
+            }
+            // With no public rollover range (e.g. an old character above a lowered cap),
+            // keep visible increases but rebase on drops rather than inventing a cycle size.
+        }
+        if (gained > 0L) memory.set(PROGRESS, number(PROGRESS, 0d).doubleValue() + (double)gained / cycle);
     }
     private static Number number(String key, Number fallback) {
         Object value = Global.getSector().getMemoryWithoutUpdate().get(key);

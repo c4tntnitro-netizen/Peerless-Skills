@@ -1,4 +1,4 @@
-# Peerless Skills v0.1
+# Peerless Skills v0.1.1
 
 A player-only training layer beyond Elite for Starsector 0.98a-RC8. Restart after installing the updated JAR.
 
@@ -24,13 +24,17 @@ Reassigning a skill so that it no longer has its Elite prerequisite clears its P
 
 In **LunaLib > Peerless Skills**, **Post-cap progression** is off by default. Enable it to earn one Peerless point per **10 post-cap levels**; **Post-cap levels per point** adjusts that ratio from 1 to 100. A post-cap level means one full XP bar at the current level cap. Progress starts when enabled, pauses while disabled, and survives saving. Changing the ratio applies to remaining progress. The selected level-up plugin supplies the cap and XP requirement, including SiC's settings.
 
-LunaLib changes take effect immediately, including while a menu or the console is open. Use `APSProgress` in the console to see whether tracking is enabled and attached, your banked XP bars, the XP required per bar, and your point balance. This command only reads progress; it does not award points or reset tracking.
+XP is checked every campaign frame through the public API, including paused campaign updates. Visible gains and observed bar rollovers count. Full XP cycles completed between checks cannot be recovered, so large rewards can be undercounted. Tracking does not change your XP, level, story points or selected level-up plugin.
 
-Characters above the current level cap also earn progress, including after removing a mod that raised the cap. Their level stays unchanged, and each Peerless XP bar still uses the active cap's XP requirement.
+LunaLib changes take effect immediately, including while a menu or the console is open. Use `APSProgress` in the console to see the public-API tracking status, your banked XP bars, the XP required per bar, and your point balance. This command only reads progress; it does not award points or reset tracking.
+
+Characters above the current level cap also earn progress from visible XP increases, including after removing a mod that raised the cap. Their level stays unchanged, and each Peerless XP bar still uses the active cap's XP requirement. If the level-up plugin supplies no valid rollover range at their actual level, decreases are ignored; progression can therefore undercount more often for these characters.
 
 With Console Commands, run **APSunlock** during a campaign to train all fourteen upgrades and grant their Elite prerequisites without spending Peerless points. This changes the player's learned skills. AddPeerlessPoint still grants one test point once per campaign; AddPeerlessPoint helmsmanship additionally attempts to train that skill.
 
 ## Compatibility notes
+
+**0.98.5a-RC7:** This update removes the internal XP hook responsible for the reported campaign-loading crash. It is not a full RC7 compatibility update: the existing missile loading-bar adapter still depends on older native HUD classes. The declared target remains **0.98a-RC8**.
 
 **Safety Overrides and Phase Anchor:** Peerless Field Modulation cancels an SO ship's first overload and grants the maneuverability boost, allowing weapons to fire again. It does not clear flux or bypass SO's no-vent restriction. A lethal hit can trigger both Phase Anchor and Peerless Combat Endurance; Enduring does not stop the emergency retreat.
 
@@ -89,7 +93,9 @@ For source builds, place this checkout in `Starsector/mods/Peerless Skills` and 
 
 Training access uses the native Intel contact APIs in both vanilla and SiC. The character-screen training button and its UI adapter have been removed.
 
-Optional XP progression uses an isolated 0.98a adapter around the selected level-up plugin. It delegates every calculation and observes the native CharacterStats XP-normalization query, using its immediate caller to exclude tooltip queries and repeated story-point calculations. The original plugin is restored when disabled. This uses direct native registry access and a Java stack trace, without reflection or copied engine functions. Check this adapter when upgrading Starsector. Regression coverage runs actual CharacterStats XP awards across multiple wraps; notification coverage runs native campaign-message click dispatch. These tests do not establish live UI hit testing or appearance.
+Optional XP progression uses only public character-stat and level-up APIs in the existing campaign update script. The old native registry adapter and stack-trace observer are removed; XP tracking uses no reflection or extracted engine functions. Unchanged samples do not write progress. Load, enable, cap and curve changes establish fresh baselines while retaining banked progress and award receipts. A manual XP decrease within the same valid bar is indistinguishable from a rollover; console edits are not an exact XP accounting source.
+
+Run `test-progression.ps1` for the focused polling regression. It compiles the tracker without the internal engine JAR and tests the actual campaign-update entry point using public-API test doubles, including visible rollovers, hidden full-cycle losses, toggles, reloads, old banked progress, quest rewards and invalid ranges. This does not establish a live campaign playtest. Other native UI adapters remain separate compatibility concerns; the existing missile loading-bar adapter requires updating before a full source build against 0.98.5a-RC7.
 
 Run python tools/wire_story_training.py to remove obsolete Isa/Sinni training rules from installed optional story mods while preserving their completion rewards. It is idempotent and backs up records under build/story-training-backups, preserving every unrelated CSV record byte-for-byte. The installed Chief Navigator development JAR also removes Sinni's contact button; these optional-mod changes are local and are not bundled in this repository.
 
